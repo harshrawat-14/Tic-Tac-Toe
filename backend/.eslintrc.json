@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json.schemastore.org/eslintrc",
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "project": "./tsconfig.json",
+    "tsconfigRootDir": "."
+  },
+  "plugins": [
+    "@typescript-eslint"
+  ],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@typescript-eslint/recommended-requiring-type-checking"
+  ],
+  "rules": {
+    // ── TypeScript strict ─────────────────────────────────────────────────
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/no-unsafe-assignment": "warn",
+    "@typescript-eslint/no-unsafe-call": "warn",
+    "@typescript-eslint/no-unsafe-member-access": "warn",
+    "@typescript-eslint/no-unsafe-return": "warn",
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+
+    // ── Nakama runtime: no Node.js globals ───────────────────────────────
+    // Nakama's Goja VM does not provide Node.js built-ins.
+    "no-restricted-globals": [
+      "error",
+      { "name": "require",  "message": "Nakama runtime does not support require(). Use ES module imports." },
+      { "name": "process",  "message": "Nakama runtime does not provide process. Use nkruntime.Context." },
+      { "name": "Buffer",   "message": "Nakama runtime does not provide Buffer. Use nk.binaryToString()." },
+      { "name": "__dirname","message": "Nakama runtime does not provide __dirname." },
+      { "name": "__filename","message": "Nakama runtime does not provide __filename." }
+    ],
+
+    // ── General quality rules ──────────────────────────────────────────────
+    "no-console": "error",
+    "no-debugger": "error",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "no-throw-literal": "error",
+    "prefer-const": "error",
+    "eqeqeq": ["error", "always"],
+    "curly": ["error", "all"],
+    "no-var": "error",
+
+    // ── Style (enforced only where ambiguous) ─────────────────────────────
+    "@typescript-eslint/consistent-type-imports": [
+      "warn",
+      { "prefer": "type-imports", "fixStyle": "inline-type-imports" }
+    ],
+    "@typescript-eslint/consistent-type-definitions": ["warn", "interface"],
+
+    // ── Disable rules that conflict with the Nakama pattern ───────────────
+    // nkruntime is a global namespace; we declare it via typeRoots, not import.
+    "no-undef": "off"
+  },
+  "env": {
+    "es2020": true
+  },
+  "ignorePatterns": [
+    "build/",
+    "node_modules/",
+    "*.js"
+  ]
+}

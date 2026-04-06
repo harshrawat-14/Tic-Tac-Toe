@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # ── CockroachDB (single-node, insecure, for local dev) ─────────────────────
+  cockroachdb:
+    image: cockroachdb/cockroach:latest-v23.1
+    container_name: tictactoe-cockroachdb
+    command: start-single-node --insecure --store=attrs=ssd,path=/var/lib/cockroach/
+    ports:
+      - "26257:26257"   # SQL wire protocol
+      - "8080:8080"     # CockroachDB Admin UI
+    volumes:
+      - cockroach-data:/var/lib/cockroach
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # ── Nakama game server ──────────────────────────────────────────────────────
+  nakama:
+    image: heroiclabs/nakama:3.21.1
+    container_name: tictactoe-nakama
+    entrypoint:
+      - "/bin/sh"
+      - "-ecx"
+      - >
+        /nakama/nakama migrate up
+        --database.address root@cockroachdb:26257
+        &&
+        exec /nakama/nakama
+        --config /nakama/data/nakama-config.yml
+        --database.address root@cockroachdb:26257
+        --logger.level DEBUG
+    environment:
+      - NAKAMA_SERVER_KEY=${NAKAMA_SERVER_KEY:-defaultkey}
+      - NAKAMA_CONSOLE_USERNAME=${NAKAMA_CONSOLE_USERNAME:-admin}
+      - NAKAMA_CONSOLE_PASSWORD=${NAKAMA_CONSOLE_PASSWORD:-password}
+    ports:
+      - "7349:7349"   # Nakama client port (real-time / WebSocket)
+      - "7350:7350"   # Nakama HTTP API
+      - "7351:7351"   # Nakama gRPC
+    volumes:
+      - ./backend/build:/nakama/data/modules          # compiled index.js
+      - ./backend/nakama-config.yml:/nakama/data/nakama-config.yml
+    depends_on:
+      cockroachdb:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  cockroach-data:
+    driver: local

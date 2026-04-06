@@ -1,5 +1,5 @@
 # CONTEXT_HANDOFF.md — Nakama Tic-Tac-Toe Monorepo
-> Sessions 1–2 of N | Last updated: 2026-04-06
+> Sessions 1–3 of N | Last updated: 2026-04-07
 
 ---
 
@@ -38,6 +38,20 @@ Tic-Tac-Toe/
 | `backend/build/index.js` | ✅ DONE (22.3kb, esbuild es2015) |
 
 **Verification**: `tsc --noEmit` passes (0 errors). `npm run build` produces a valid 22.3kb bundle.
+
+## SESSION 3 — DONE ✅ (DevOps: Docker, Makefile, Config)
+
+| File | Status |
+|---|---|
+| `docker-compose.yml` | ✅ DONE |
+| `backend/Dockerfile` | ✅ DONE |
+| `backend/nakama-config.yml` | ✅ DONE |
+| `Makefile` | ✅ DONE |
+| `.env.example` | ✅ DONE |
+| `backend/.eslintrc.json` | ✅ DONE |
+| `.gitignore` | ✅ DONE (bonus) |
+
+**`backend/package.json`** updated: added `lint` / `lint:fix` scripts + `eslint`, `@typescript-eslint/*` devDeps.
 
 ---
 
@@ -197,24 +211,24 @@ game-bg.DEFAULT #0f172a   (.surface .elevated .border .muted)
 
 ---
 
-## TODO — Session 3 (Frontend Foundation)
+## TODO — Session 4 (Frontend Foundation)
 
 ```
+frontend/index.html
+frontend/postcss.config.cjs
 frontend/src/main.tsx
 frontend/src/App.tsx
-frontend/src/types/game.ts        re-export backend types (copy, not symlink)
-frontend/src/lib/nakama.ts        singleton Client + Socket factory
-frontend/src/lib/queryClient.ts
-frontend/src/lib/utils.ts         cn() helper
-frontend/src/store/authStore.ts
-frontend/src/store/gameStore.ts
-frontend/src/store/settingsStore.ts
-frontend/src/styles/globals.css
-frontend/postcss.config.cjs
-frontend/index.html
+frontend/src/types/game.ts          re-export/copy of backend types (no symlink)
+frontend/src/lib/nakama.ts          singleton Client + Socket + device auth
+frontend/src/lib/queryClient.ts     @tanstack/react-query QueryClient
+frontend/src/lib/utils.ts           cn(...inputs: ClassValue[]): string
+frontend/src/store/authStore.ts     Zustand: session, user, login/logout
+frontend/src/store/gameStore.ts     Zustand: MatchState, opcode dispatch
+frontend/src/store/settingsStore.ts Zustand: mode pref, sound, persisted
+frontend/src/styles/globals.css     @tailwind base/components/utilities + CSS vars
 ```
 
-## TODO — Session 4 (UI Components + Pages)
+## TODO — Session 5 (UI Components + Pages)
 
 ```
 All files under frontend/src/components/

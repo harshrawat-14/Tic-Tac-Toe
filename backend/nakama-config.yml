@@ -1,0 +1,79 @@
+# Nakama server configuration for local development.
+# Override values via CLI flags or environment variables when deploying.
+# Reference: https://heroiclabs.com/docs/nakama/getting-started/configuration/
+
+name: "tictactoe-server"
+
+# ── Database ────────────────────────────────────────────────────────────────
+database:
+  # Overridden at runtime by the --database.address CLI flag in docker-compose.
+  # Format: <user>@<host>:<port>/<db>
+  # CockroachDB does not require a password in insecure single-node mode.
+  address:
+    - "root@cockroachdb:26257"
+
+# ── Socket / Networking ──────────────────────────────────────────────────────
+socket:
+  # This key is what clients send as the server key when connecting.
+  # Override via NAKAMA_SERVER_KEY env var in docker-compose.
+  server_key: "defaultkey"
+  port: 7350
+  # Maximum number of simultaneous connections the server accepts.
+  max_message_size_bytes: 4096
+  pong_wait_ms: 10000
+  ping_period_ms: 8000
+  ping_backoff_threshold: 20
+  outgoing_queue_size: 64
+
+# ── Session ──────────────────────────────────────────────────────────────────
+session:
+  # Session token validity in seconds (2 hours).
+  token_expiry_sec: 7200
+  # Refresh token validity (7 days).
+  refresh_token_expiry_sec: 604800
+  single_session: false
+
+# ── Runtime ──────────────────────────────────────────────────────────────────
+runtime:
+  # The filename (not full path) of the JS bundle inside /nakama/data/modules/.
+  js_entrypoint: "index.js"
+  # Disable Lua and Go runtimes; we only use the JS runtime.
+  lua_min_count: 0
+  lua_max_count: 0
+  go_min_count: 0
+  go_max_count: 0
+
+# ── Logger ────────────────────────────────────────────────────────────────────
+logger:
+  # Options: DEBUG | INFO | WARN | ERROR
+  level: "INFO"
+  stdout: true
+  file: ""
+
+# ── Console ──────────────────────────────────────────────────────────────────
+console:
+  port: 7351
+  username: "admin"
+  password: "password"
+  # Signing key for console session tokens (change in production).
+  signing_key: "console_signing_key_change_me"
+  max_message_size_bytes: 4096
+
+# ── Leaderboard ───────────────────────────────────────────────────────────────
+leaderboard:
+  # Rank cache holds the global ranking in memory for faster reads.
+  blacklist_rank_cache: []
+  callback_queue_size: 65536
+
+# ── Matchmaker ───────────────────────────────────────────────────────────────
+matchmaker:
+  max_tickets: 5
+  interval_sec: 1
+  max_intervals: 10
+
+# ── Metrics (disabled for local dev) ─────────────────────────────────────────
+metrics:
+  reporting_freq_sec: 60
+  namespace: "tictactoe"
+  prefix: "nakama"
+  custom_sample_rate: 0

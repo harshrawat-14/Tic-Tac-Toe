@@ -1,0 +1,38 @@
+# ── Environment ───────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Backend build artefacts ───────────────────────────────────────────────────
+backend/build/
+backend/*.tsbuildinfo
+
+# ── Frontend build artefacts ──────────────────────────────────────────────────
+frontend/dist/
+frontend/.vite/
+
+# ── Docker data (if you ever run Docker volumes locally) ──────────────────────
+cockroach-data/
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
