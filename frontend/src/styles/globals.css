@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand: 168 80% 37%;
+    --color-game-x: 0 70% 59%;
+    --color-game-o: 212 68% 54%;
+    --color-bg: 222 47% 11%;
+    --grid-color: rgba(51, 65, 85, 0.5);
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-game-bg font-sans text-white;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(20, 184, 166, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(55, 138, 221, 0.04) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+
+  /* Subtle grid background for pages */
+  .bg-grid {
+    background-image:
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Selection colors */
+  ::selection {
+    @apply bg-brand-500/30 text-white;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-game-bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-game-bg-muted;
+  }
+}
+
+@layer components {
+  /* Glass card */
+  .glass-card {
+    @apply rounded-2xl border border-game-bg-border/50 bg-game-bg-surface/80 backdrop-blur-xl shadow-dark-lg;
+  }
+
+  /* Glow button */
+  .btn-brand {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           bg-brand-500 px-6 py-3 font-semibold text-white
+           transition-all duration-200
+           hover:bg-brand-400 hover:shadow-brand-glow
+           active:scale-[0.98]
+           disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           border border-game-bg-border px-6 py-3 font-semibold text-white/80
+           transition-all duration-200
+           hover:bg-game-bg-elevated hover:text-white hover:border-game-bg-muted
+           active:scale-[0.98]
+           disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           bg-game-x/20 border border-game-x/30 px-6 py-3 font-semibold text-game-x
+           transition-all duration-200
+           hover:bg-game-x/30 hover:border-game-x/50
+           active:scale-[0.98]
+           disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  /* Input */
+  .input-field {
+    @apply w-full rounded-xl border border-game-bg-border bg-game-bg-surface/60
+           px-4 py-3 text-white placeholder-game-bg-muted
+           outline-none transition-all duration-200
+           focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/20;
+  }
+
+  /* Skeleton loader */
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-game-bg-elevated;
+  }
+
+  /* Pulsing ring animation for matchmaking */
+  .matchmaking-ring {
+    animation: matchmaking-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+@layer utilities {
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-brand-400 to-brand-200 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-x {
+    @apply bg-gradient-to-r from-game-x to-game-x-light bg-clip-text text-transparent;
+  }
+
+  .text-gradient-o {
+    @apply bg-gradient-to-r from-game-o to-game-o-light bg-clip-text text-transparent;
+  }
+}
+
+/* Matchmaking pulse keyframes (outside Tailwind layers for CSS animation) */
+@keyframes matchmaking-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
