@@ -2,19 +2,26 @@
 // Uses Nakama storage for per-player stats and the built-in leaderboard API
 // for ranked ELO. All functions use the global `nkruntime` namespace.
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 export const LEADERBOARD_ID = 'global_elo';
 export const STATS_COLLECTION = 'player_stats';
 export const STATS_KEY = 'stats';
 
-/** Default ELO for new players. */
-export const DEFAULT_ELO = 1000;
+// DEFAULT_ELO, ELO_K, EloResult, and calculateEloChange are the single source
+// of truth in ./utils/game-logic (zero Nakama dependency — testable in Node).
+// They are re-exported here so existing call-sites don't need to change imports.
+export {
+  DEFAULT_ELO,
+  ELO_K,
+  calculateEloChange,
+} from './utils/game-logic';
+export type { EloResult } from './utils/game-logic';
 
-/** K-factor for ELO calculation. */
-export const ELO_K = 32;
+// Private import for use inside getOrCreatePlayerStats default object
+import { DEFAULT_ELO } from './utils/game-logic';
 
-// ─── Internal Types ──────────────────────────────────────────────────────────
+// ─── Internal Types ───────────────────────────────────────────────────────────
 
 /** What we persist to Nakama storage (superset of LeaderboardEntry fields). */
 export interface PlayerStats {
@@ -29,16 +36,16 @@ export interface PlayerStats {
   eloRating: number;
 }
 
-// ─── Leaderboard Lifecycle ───────────────────────────────────────────────────
+// ─── Leaderboard Lifecycle ────────────────────────────────────────────────────
 
 /**
  * Idempotently creates the `global_elo` leaderboard.
  * Call once from InitModule. Uses `set` operator so each
  * leaderboardRecordWrite replaces the score with the player's current ELO.
  *
- *  sortOrder  : 'desc' — higher ELO = better rank
- *  operator   : 'set'  — latest ELO overwrites previous
- *  resetSchedule : undefined — never resets
+ *  sortOrder     : 'desc' — higher ELO = better rank
+ *  operator      : 'set'  — latest ELO overwrites previous
+ *  resetSchedule : undefined — never resets automatically
  */
 export function initLeaderboard(
   nk: nkruntime.Nakama,
@@ -61,11 +68,11 @@ export function initLeaderboard(
   }
 }
 
-// ─── Player Stats CRUD ──────────────────────────────────────────────────────
+// ─── Player Stats CRUD ───────────────────────────────────────────────────────
 
 /**
  * Read a player's stats from storage, returning sensible defaults if the
- * record doesn't exist yet.
+ * record doesn't exist yet (first time a player joins a match).
  */
 export function getOrCreatePlayerStats(
   nk: nkruntime.Nakama,
@@ -137,40 +144,4 @@ export function writePlayerStats(
     undefined,        // metadata
     undefined,        // operator override — use leaderboard default ('set')
   );
-}
-
-// ─── ELO Calculation ─────────────────────────────────────────────────────────
-
-export interface EloResult {
-  newA: number;
-  newB: number;
-  deltaA: number;
-  deltaB: number;
-}
-
-/**
- * Standard ELO calculation.
- *
- * @param ratingA — current ELO of player A
- * @param ratingB — current ELO of player B
- * @param resultA — 1 = A wins, 0 = A loses, 0.5 = draw
- * @returns new ratings and signed deltas for both players
- */
-export function calculateEloChange(
-  ratingA: number,
-  ratingB: number,
-  resultA: 0 | 0.5 | 1,
-): EloResult {
-  const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
-  const expectedB = 1 - expectedA;
-
-  const newA = Math.round(ratingA + ELO_K * (resultA - expectedA));
-  const newB = Math.round(ratingB + ELO_K * ((1 - resultA) - expectedB));
-
-  return {
-    newA,
-    newB,
-    deltaA: newA - ratingA,
-    deltaB: newB - ratingB,
-  };
 }

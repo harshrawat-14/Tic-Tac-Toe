@@ -24,6 +24,11 @@ import {
   PlayerStats,
 } from './leaderboard';
 
+import {
+  checkWinner,
+  isBoardFull,
+} from './utils/game-logic';
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const TURN_TIME_SECONDS = 30;
@@ -31,17 +36,7 @@ const RECONNECT_WINDOW_SECONDS = 30;
 const MAX_TURN_FORFEITS = 3;
 const MAX_PLAYERS = 2;
 
-/** All 8 win conditions as index triplets (row-major, 0=top-left). */
-const WIN_LINES: ReadonlyArray<[number, number, number]> = [
-  [0, 1, 2], // top row
-  [3, 4, 5], // mid row
-  [6, 7, 8], // bot row
-  [0, 3, 6], // left col
-  [1, 4, 7], // mid col
-  [2, 5, 8], // right col
-  [0, 4, 8], // diag ↘
-  [2, 4, 6], // diag ↙
-];
+// WIN_LINES, checkWinner, isBoardFull imported from './utils/game-logic'
 
 // ─── Helper: broadcast wrapper ──────────────────────────────────────────────
 
@@ -61,32 +56,7 @@ function broadcastMessage(
   );
 }
 
-// ─── Helper: check winner ───────────────────────────────────────────────────
-
-/**
- * Returns the winning symbol ('X' or 'O') if any line is complete, else null.
- */
-function checkWinner(board: (string | null)[]): string | null {
-  for (let i = 0; i < WIN_LINES.length; i++) {
-    const a = WIN_LINES[i][0];
-    const b = WIN_LINES[i][1];
-    const c = WIN_LINES[i][2];
-    if (board[a] !== null && board[a] === board[b] && board[b] === board[c]) {
-      return board[a];
-    }
-  }
-  return null;
-}
-
-/**
- * Returns true when every cell is filled and no winner exists.
- */
-function isBoardFull(board: (string | null)[]): boolean {
-  for (let i = 0; i < board.length; i++) {
-    if (board[i] === null) return false;
-  }
-  return true;
-}
+// checkWinner and isBoardFull imported from './utils/game-logic'
 
 // ─── Helper: switch turn ────────────────────────────────────────────────────
 
