@@ -169,7 +169,7 @@ export default function GameOver() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
           >
-            <GameBoard interactive={false} compact />
+            <GameBoard interactive={false} />
           </motion.div>
 
           {/* Buttons */}

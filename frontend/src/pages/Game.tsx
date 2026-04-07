@@ -54,13 +54,8 @@ export default function Game() {
 
   if (!matchState) return null;
 
-  // Determine players
-  const myPlayer = matchState.players[myUserId] ?? null;
-  const opponentId = Object.keys(matchState.players).find((id) => id !== myUserId);
-  const opponentPlayer = opponentId ? matchState.players[opponentId] : null;
-
-  const currentTurnUserId = matchState.currentTurn;
   const isGameOver = matchState.status === 'GAME_OVER';
+  const opponentId = Object.keys(matchState.players).find((id) => id !== myUserId) ?? '';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-6 bg-grid relative overflow-hidden">
@@ -69,7 +64,7 @@ export default function Game() {
         isMyTurn ? 'opacity-100' : 'opacity-0'
       }`}>
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-3xl ${
-          myPlayer?.symbol === 'X' ? 'bg-game-x/3' : 'bg-game-o/3'
+          matchState.players[myUserId]?.symbol === 'X' ? 'bg-game-x/3' : 'bg-game-o/3'
         }`} />
       </div>
 
@@ -80,12 +75,9 @@ export default function Game() {
         transition={{ duration: 0.4 }}
       >
         {/* Opponent bar (top) */}
-        <PlayerBar
-          player={opponentPlayer ?? null}
-          isCurrentTurn={currentTurnUserId === opponentId}
-          isMe={false}
-          position="top"
-        />
+        {opponentId && (
+          <PlayerBar userId={opponentId} position="top" />
+        )}
 
         {/* Turn indicator */}
         <TurnIndicator />
@@ -117,12 +109,7 @@ export default function Game() {
         </div>
 
         {/* My player bar (bottom) */}
-        <PlayerBar
-          player={myPlayer}
-          isCurrentTurn={currentTurnUserId === myUserId}
-          isMe={true}
-          position="bottom"
-        />
+        <PlayerBar userId={myUserId} position="bottom" />
       </motion.div>
 
       {/* Disconnection overlay */}
