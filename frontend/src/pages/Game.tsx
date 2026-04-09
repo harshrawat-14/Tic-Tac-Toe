@@ -21,7 +21,7 @@ export default function Game() {
 
   const gameOverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Redirect if no match
+  // Redirect if no matchId
   useEffect(() => {
     if (!matchId && !matchState) {
       navigate('/lobby', { replace: true });
@@ -52,7 +52,86 @@ export default function Game() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [leaveMatch]);
 
-  if (!matchState) return null;
+  if (!matchState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-grid flex-col space-y-4">
+        <div className="w-8 h-8 rounded-full border-2 border-t-brand-500 animate-spin border-brand-500/20" />
+        <p className="text-game-bg-muted">Joining game...</p>
+      </div>
+    );
+  }
+
+  if (matchState.status === 'WAITING' || matchState.status === 'READY') {
+    const isHost = matchState.playerOrder[0] === myUserId;
+    const opponentJoined = matchState.playerOrder.length === 2;
+
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-grid relative overflow-hidden">
+        <motion.div
+          className="glass-card p-6 xs:p-8 max-w-sm w-full text-center space-y-6"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h2 className="text-xl xs:text-2xl font-display font-bold text-white">Private Room</h2>
+          {isHost ? (
+            <div className="space-y-6">
+              {opponentJoined ? (
+                <>
+                  <p className="text-green-400 font-medium flex items-center justify-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    Opponent joined!
+                  </p>
+                  <button 
+                    id="start-match-button"
+                    onClick={() => {
+                       const { socket } = useGameStore.getState();
+                       socket?.sendMatchState(matchId!, OpCode.START_GAME, '{}');
+                    }}
+                    className="btn-brand w-full py-3 text-lg font-bold shadow-lg shadow-brand-500/20"
+                  >
+                    Start Match
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-game-bg-muted">Share this code with your opponent:</p>
+                  <div className="bg-game-bg-surface/50 p-4 rounded-xl font-mono text-2xl tracking-widest border border-game-bg-border/30 select-all cursor-copy text-brand-400 group relative">
+                    {matchId}
+                    <div className="absolute inset-0 bg-brand-400/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <Loader2 className="w-4 h-4 text-brand-400 animate-spin" />
+                    <p className="text-xs text-game-bg-muted/70">Waiting for guest to join...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-12 space-y-4">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full border-2 border-brand-500/20 mx-auto" />
+                <div className="w-12 h-12 rounded-full border-2 border-t-brand-500 animate-spin mx-auto absolute inset-0" />
+              </div>
+              <p className="text-lg font-medium text-white">Joined successfully!</p>
+              <p className="text-sm text-game-bg-muted animate-pulse">Waiting for host to start the match...</p>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-game-bg-border/30">
+            <button 
+              onClick={() => {
+                leaveMatch();
+                navigate('/lobby');
+              }}
+              className="btn-ghost w-full py-2"
+            >
+              Cancel
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   const isGameOver = matchState.status === 'GAME_OVER';
   const opponentId = Object.keys(matchState.players).find((id) => id !== myUserId) ?? '';

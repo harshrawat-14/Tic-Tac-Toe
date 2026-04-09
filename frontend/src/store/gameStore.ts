@@ -14,9 +14,8 @@ import {
 import {
   authenticateDevice,
   restoreSession,
-  connectWithRetry,
   clearStoredSession,
-  SocketCallbacks,
+  nakamaClient,
 } from '@/lib/nakama';
 
 // ─── State Interface ──────────────────────────────────────────────────────────
@@ -94,12 +93,12 @@ export const useGameStore = create<GameStoreState>((set, get) => {
 
   function handleMatchData(rawMatchData: unknown): void {
     const matchData = rawMatchData as MatchData;
-    const opCode = matchData.op_code;
+    const opCode = matchData.op_code; // This is already a number
     const dataStr = matchData.data
       ? new TextDecoder().decode(matchData.data as Uint8Array)
       : '{}';
 
-    let payload: unknown;
+    let payload: any;
     try {
       payload = JSON.parse(dataStr);
     } catch {
@@ -256,57 +255,6 @@ export const useGameStore = create<GameStoreState>((set, get) => {
     }
   }
 
-  function handleMatchPresence(presenceEvent: unknown): void {
-    // Presence changes are handled via PLAYER_JOINED/PLAYER_LEFT opcodes
-    // from the server, which are more authoritative.
-    // Log for debugging:
-    console.debug('[GameStore] Match presence event:', presenceEvent);
-  }
-
-  function handleMatchmakerMatched(matched: unknown): void {
-    const matchedData = matched as { match_id?: string; token?: string };
-    const matchId = matchedData.match_id;
-    if (matchId) {
-      set({ matchmakingTicket: null });
-      get().joinMatch(matchId);
-    }
-  }
-
-  function handleDisconnect(): void {
-    const { session, connectionStatus } = get();
-    if (connectionStatus === 'connected' && session) {
-      set({ connectionStatus: 'reconnecting' });
-
-      const callbacks: SocketCallbacks = {
-        onMatchData: handleMatchData,
-        onMatchPresence: handleMatchPresence,
-        onMatchmakerMatched: handleMatchmakerMatched,
-        onDisconnect: handleDisconnect,
-        onError: handleError,
-      };
-
-      connectWithRetry(session, callbacks)
-        .then((newSocket) => {
-          set({ socket: newSocket, connectionStatus: 'connected' });
-
-          // Rejoin match if we were in one
-          const { matchId } = get();
-          if (matchId) {
-            newSocket.joinMatch(matchId).catch(console.error);
-          }
-        })
-        .catch(() => {
-          set({ connectionStatus: 'disconnected', socket: null });
-        });
-    } else {
-      set({ connectionStatus: 'disconnected', socket: null });
-    }
-  }
-
-  function handleError(error: unknown): void {
-    console.error('[GameStore] Socket error:', error);
-  }
-
   // ── Store definition ──────────────────────────────────────────────────────
 
   return {
@@ -325,16 +273,31 @@ export const useGameStore = create<GameStoreState>((set, get) => {
       set({ connectionStatus: 'connecting', connectionError: null });
       try {
         const session = await authenticateDevice(nickname);
+        const { socket: oldSocket } = get();
+        if (oldSocket) {
+          oldSocket.disconnect(false);
+        }
 
-        const callbacks: SocketCallbacks = {
-          onMatchData: handleMatchData,
-          onMatchPresence: handleMatchPresence,
-          onMatchmakerMatched: handleMatchmakerMatched,
-          onDisconnect: handleDisconnect,
-          onError: handleError,
+        const NAKAMA_SSL = import.meta.env.VITE_NAKAMA_USE_SSL === 'true';
+        const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
+
+        socket.onmatchmakermatched = (matched) => {
+          const matchedData = matched as { match_id?: string };
+          if (matchedData.match_id) {
+            set({ matchmakingTicket: null });
+            get().joinMatch(matchedData.match_id);
+          }
         };
 
-        const socket = await connectWithRetry(session, callbacks);
+        socket.onmatchdata = (matchData) => {
+          handleMatchData(matchData);
+        };
+
+        socket.ondisconnect = () => {
+          set({ connectionStatus: 'disconnected' });
+        };
+
+        await socket.connect(session, true);
 
         set({
           session,
@@ -362,15 +325,31 @@ export const useGameStore = create<GameStoreState>((set, get) => {
 
       set({ connectionStatus: 'connecting', connectionError: null });
       try {
-        const callbacks: SocketCallbacks = {
-          onMatchData: handleMatchData,
-          onMatchPresence: handleMatchPresence,
-          onMatchmakerMatched: handleMatchmakerMatched,
-          onDisconnect: handleDisconnect,
-          onError: handleError,
+        const { socket: oldSocket } = get();
+        if (oldSocket) {
+          oldSocket.disconnect(false);
+        }
+
+        const NAKAMA_SSL = import.meta.env.VITE_NAKAMA_USE_SSL === 'true';
+        const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
+
+        socket.onmatchmakermatched = (matched) => {
+          const matchedData = matched as { match_id?: string };
+          if (matchedData.match_id) {
+            set({ matchmakingTicket: null });
+            get().joinMatch(matchedData.match_id);
+          }
         };
 
-        const socket = await connectWithRetry(session, callbacks);
+        socket.onmatchdata = (matchData) => {
+          handleMatchData(matchData);
+        };
+
+        socket.ondisconnect = () => {
+          set({ connectionStatus: 'disconnected' });
+        };
+
+        await socket.connect(session, true);
 
         set({
           session,
@@ -397,8 +376,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         '*',       // query: match anyone
         2,         // minCount
         2,         // maxCount
-        { mode },  // string properties
-        {},        // numeric properties
+        { mode: mode }, // string properties
       );
 
       set({ matchmakingTicket: ticket.ticket });
@@ -408,10 +386,17 @@ export const useGameStore = create<GameStoreState>((set, get) => {
 
     async cancelMatchmaking(): Promise<void> {
       const { socket, matchmakingTicket } = get();
-      if (!socket || !matchmakingTicket) return;
-
-      await socket.removeMatchmaker(matchmakingTicket);
       set({ matchmakingTicket: null });
+      if (!socket || !matchmakingTicket) {
+        console.warn('cancelMatchmaking called but no ticket or socket available');
+        return;
+      }
+
+      try {
+        await socket.removeMatchmaker(matchmakingTicket);
+      } catch (err) {
+        console.warn('Failed to remove matchmaking ticket', err);
+      }
     },
 
     // ── joinMatch ─────────────────────────────────────────────────────────

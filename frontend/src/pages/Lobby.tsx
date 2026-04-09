@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Clock, Infinity as InfinityIcon, Swords, Plus, LogIn,
-  Trophy, LogOut, Copy, Check, Loader2, Users,
+  Trophy, LogOut, Loader2, Users,
 } from 'lucide-react';
 import { useGameStore } from '@/store/gameStore';
 import { nakamaClient } from '@/lib/nakama';
@@ -20,8 +20,6 @@ export default function Lobby() {
   const disconnect = useGameStore((s) => s.disconnect);
 
   const [joinCode, setJoinCode] = useState('');
-  const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -32,7 +30,9 @@ export default function Lobby() {
     queryFn: async () => {
       if (!session) throw new Error('No session');
       const res = await nakamaClient.rpc(session, 'get_player_stats', {});
-      return JSON.parse(res.payload as unknown as string) as PlayerStatsResponse;
+      return (typeof res.payload === 'string' 
+        ? JSON.parse(res.payload) 
+        : res.payload) as PlayerStatsResponse;
     },
     enabled: !!session,
   });
@@ -50,9 +50,12 @@ export default function Lobby() {
     if (!session) return;
     setIsCreating(true);
     try {
-      const res = await nakamaClient.rpc(session, 'create_room', { mode: 'classic' });
-      const data = JSON.parse(res.payload as unknown as string) as CreateRoomResponse;
-      setCreatedRoomId(data.matchId);
+      const res = await nakamaClient.rpc(session, 'create_room', JSON.stringify({ mode: 'classic' }));
+      const data = (typeof res.payload === 'string'
+        ? JSON.parse(res.payload)
+        : res.payload) as CreateRoomResponse;
+      await joinMatch(data.matchId);
+      navigate('/game');
     } catch (err) {
       console.error('Failed to create room:', err);
     } finally {
@@ -73,13 +76,6 @@ export default function Lobby() {
     } finally {
       setIsJoining(false);
     }
-  }
-
-  async function handleCopyCode() {
-    if (!createdRoomId) return;
-    await navigator.clipboard.writeText(createdRoomId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   function handleSignOut() {
@@ -217,33 +213,6 @@ export default function Lobby() {
                 )}
                 Create Room
               </button>
-
-              {createdRoomId && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="flex items-center gap-2"
-                >
-                  <input
-                    id="room-code-display"
-                    type="text"
-                    readOnly
-                    value={createdRoomId}
-                    className="input-field text-xs font-mono flex-1 py-2"
-                  />
-                  <button
-                    onClick={handleCopyCode}
-                    className="flex items-center justify-center w-9 h-9 rounded-lg border border-game-bg-border hover:bg-game-bg-elevated transition-colors"
-                    title="Copy code"
-                  >
-                    {copied ? (
-                      <Check className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-game-bg-muted" />
-                    )}
-                  </button>
-                </motion.div>
-              )}
             </div>
 
             {/* Join by Code */}

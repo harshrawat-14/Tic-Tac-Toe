@@ -45,7 +45,7 @@ export const rpcCreateRoom: nkruntime.RpcFunction = function (
     }
   }
 
-  const matchId = nk.matchCreate('tictactoe', { mode: mode });
+  const matchId = nk.matchCreate('tictactoe', { mode: mode, type: 'private' });
   logger.info(
     'create_room: user=%s created match=%s mode=%s',
     ctx.userId,

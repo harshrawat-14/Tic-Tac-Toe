@@ -29,7 +29,9 @@ export default function Leaderboard() {
         'get_leaderboard',
         payload,
       );
-      return JSON.parse(res.payload as unknown as string) as GetLeaderboardResponse;
+      return (typeof res.payload === 'string'
+        ? JSON.parse(res.payload)
+        : res.payload) as GetLeaderboardResponse;
     },
     enabled: !!session,
   });

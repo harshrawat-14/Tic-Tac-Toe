@@ -290,7 +290,7 @@ function handleMove(
 
 // ─── matchInit ───────────────────────────────────────────────────────────────
 
-const matchInit: nkruntime.MatchInitFunction = function (
+const matchInit: nkruntime.MatchInitFunction = function matchInit(
   ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -299,6 +299,11 @@ const matchInit: nkruntime.MatchInitFunction = function (
   let mode: GameMode = 'classic';
   if (params && params['mode'] === 'timed') {
     mode = 'timed';
+  }
+
+  let type = 'matchmaker';
+  if (params && params['type'] === 'private') {
+    type = 'private';
   }
 
   const state: MatchState = {
@@ -317,8 +322,8 @@ const matchInit: nkruntime.MatchInitFunction = function (
     reconnectDeadline: {},
   };
 
-  const label = JSON.stringify({ mode: mode });
-  logger.info('matchInit: match=%s mode=%s', ctx.matchId, mode);
+  const label = JSON.stringify({ mode: mode, type: type });
+  logger.info('matchInit: match=%s mode=%s type=%s', ctx.matchId, mode, type);
 
   return {
     state: state as nkruntime.MatchState,
@@ -329,7 +334,7 @@ const matchInit: nkruntime.MatchInitFunction = function (
 
 // ─── matchJoinAttempt ────────────────────────────────────────────────────────
 
-const matchJoinAttempt: nkruntime.MatchJoinAttemptFunction = function (
+const matchJoinAttempt: nkruntime.MatchJoinAttemptFunction = function matchJoinAttempt(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -364,7 +369,7 @@ const matchJoinAttempt: nkruntime.MatchJoinAttemptFunction = function (
 
 // ─── matchJoin ───────────────────────────────────────────────────────────────
 
-const matchJoin: nkruntime.MatchJoinFunction = function (
+const matchJoin: nkruntime.MatchJoinFunction = function matchJoin(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -429,20 +434,31 @@ const matchJoin: nkruntime.MatchJoinFunction = function (
     });
   }
 
-  // ── If two players present, start the game ──
+  // ── If two players present, proceed with start conditions ──
   if (s.playerOrder.length === MAX_PLAYERS && s.status === 'WAITING') {
-    s.status = 'PLAYER_X_TURN';
-    s.currentTurn = s.playerOrder[0]; // playerOrder[0] is always X
-
-    if (s.mode === 'timed') {
-      s.turnTimeLeft = TURN_TIME_SECONDS;
+    let isPrivate = false;
+    if (_ctx.matchLabel) {
+      try {
+        const labelData = JSON.parse(_ctx.matchLabel);
+        isPrivate = labelData.type === 'private';
+      } catch (e) {}
     }
 
-    logger.info('matchJoin: match=%s starting — X=%s O=%s', s.matchId, s.playerOrder[0], s.playerOrder[1]);
-
-    // Send full state to all players
-    const gameState: GameStatePayload = { state: s };
-    broadcastMessage(dispatcher, OpCode.GAME_STATE, gameState);
+    if (isPrivate) {
+      s.status = 'READY';
+      logger.info('matchJoin: private match=%s READY to start by host', s.matchId);
+      const gameState: GameStatePayload = { state: s };
+      broadcastMessage(dispatcher, OpCode.PLAYER_JOINED, gameState);
+    } else {
+      s.status = 'PLAYER_X_TURN';
+      s.currentTurn = s.playerOrder[0]; // playerOrder[0] is always X
+      if (s.mode === 'timed') {
+        s.turnTimeLeft = TURN_TIME_SECONDS;
+      }
+      logger.info('matchJoin: match=%s starting — X=%s O=%s', s.matchId, s.playerOrder[0], s.playerOrder[1]);
+      const gameState: GameStatePayload = { state: s };
+      broadcastMessage(dispatcher, OpCode.GAME_STATE, gameState);
+    }
   }
 
   return { state: s as unknown as nkruntime.MatchState };
@@ -450,7 +466,7 @@ const matchJoin: nkruntime.MatchJoinFunction = function (
 
 // ─── matchLeave ──────────────────────────────────────────────────────────────
 
-const matchLeave: nkruntime.MatchLeaveFunction = function (
+const matchLeave: nkruntime.MatchLeaveFunction = function matchLeave(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -514,7 +530,7 @@ const matchLeave: nkruntime.MatchLeaveFunction = function (
 
 // ─── matchLoop ───────────────────────────────────────────────────────────────
 
-const matchLoop: nkruntime.MatchLoopFunction = function (
+const matchLoop: nkruntime.MatchLoopFunction = function matchLoop(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -542,6 +558,30 @@ const matchLoop: nkruntime.MatchLoopFunction = function (
       const senderId = message.sender.userId;
 
       switch (message.opCode) {
+        case OpCode.START_GAME: {
+          if (senderId !== s.playerOrder[0]) {
+            logger.warn('matchLoop: START_GAME rejected, %s is not host', senderId);
+            break;
+          }
+          if (s.status !== 'WAITING' && s.status !== 'READY') {
+            logger.warn('matchLoop: START_GAME rejected, status is %s', s.status);
+            break;
+          }
+          if (s.playerOrder.length !== MAX_PLAYERS) {
+            logger.warn('matchLoop: START_GAME rejected, need %d players', MAX_PLAYERS);
+            break;
+          }
+
+          s.status = 'PLAYER_X_TURN';
+          s.currentTurn = s.playerOrder[0];
+          if (s.mode === 'timed') s.turnTimeLeft = TURN_TIME_SECONDS;
+
+          logger.info('matchLoop: host started match=%s', s.matchId);
+          const gameState: GameStatePayload = { state: s };
+          broadcastMessage(dispatcher, OpCode.GAME_STATE, gameState);
+          break;
+        }
+
         case OpCode.MOVE: {
           let movePayload: MovePayload;
           try {
@@ -686,7 +726,7 @@ const matchLoop: nkruntime.MatchLoopFunction = function (
 
 // ─── matchSignal ─────────────────────────────────────────────────────────────
 
-const matchSignal: nkruntime.MatchSignalFunction = function (
+const matchSignal: nkruntime.MatchSignalFunction = function matchSignal(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -709,7 +749,7 @@ const matchSignal: nkruntime.MatchSignalFunction = function (
 
 // ─── matchTerminate ──────────────────────────────────────────────────────────
 
-const matchTerminate: nkruntime.MatchTerminateFunction = function (
+const matchTerminate: nkruntime.MatchTerminateFunction = function matchTerminate(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,

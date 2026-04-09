@@ -65,7 +65,9 @@ export default function GameOver() {
         'get_leaderboard',
         { limit: 3 },
       );
-      return JSON.parse(res.payload as unknown as string) as GetLeaderboardResponse;
+      return (typeof res.payload === 'string'
+        ? JSON.parse(res.payload)
+        : res.payload) as GetLeaderboardResponse;
     },
     enabled: !!session,
   });

@@ -8,6 +8,7 @@ export enum OpCode {
   RECONNECT_WINDOW = 7,
   TIMER_TICK = 8,
   FORFEIT = 9,
+  START_GAME = 10,
 }
 
 export type GameStatus =
