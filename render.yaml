@@ -40,3 +40,5 @@ services:
         generateValue: true
       - key: NAKAMA_RUNTIME_HTTP_KEY
         generateValue: true
+      - key: NAKAMA_RUNTIME_JS_ENTRYPOINT
+        value: index.js
