@@ -68,12 +68,13 @@ export default function Lobby() {
   }
 
   async function handleJoinRoom() {
-    const code = joinCode.trim();
+    const code = joinCode.trim().replace(/\s+/g, '');
     if (!code) return;
     setIsJoining(true);
     setJoinError(null);
     try {
-      await joinMatch(code);
+      setPrivateRoomCode(code);
+      await joinMatch(code, { privateRoomCode: code });
       navigate('/game');
     } catch {
       setJoinError('Invalid match code or room is full');

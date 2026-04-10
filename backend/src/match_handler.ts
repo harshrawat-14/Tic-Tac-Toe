@@ -88,6 +88,31 @@ function connectedPlayerCount(state: MatchState): number {
   return count;
 }
 
+function presenceUserId(presence: nkruntime.Presence | null | undefined): string {
+  if (!presence) return '';
+  const p = presence as unknown as { userId?: string; user_id?: string };
+  return p.userId || p.user_id || '';
+}
+
+function messageOpCode(message: nkruntime.MatchMessage): number {
+  const m = message as unknown as { opCode?: number; op_code?: number };
+  if (typeof m.opCode === 'number') return m.opCode;
+  if (typeof m.op_code === 'number') return m.op_code;
+  return -1;
+}
+
+function decodeMessageData(nk: nkruntime.Nakama, message: nkruntime.MatchMessage): string {
+  const m = message as unknown as { data?: ArrayBuffer | string };
+  if (typeof m.data === 'string') {
+    return m.data;
+  }
+  try {
+    return nk.binaryToString(message.data);
+  } catch (_e) {
+    return '';
+  }
+}
+
 // ─── Helper: resolve game end ───────────────────────────────────────────────
 
 /**
@@ -345,22 +370,23 @@ export function matchJoinAttempt(
   _metadata: { [key: string]: string },
 ): { state: nkruntime.MatchState; accept: boolean; rejectMessage?: string } | null {
   const s = state as unknown as MatchState;
+  const userId = presenceUserId(presence);
 
   // Allow reconnection for existing players
-  if (s.players[presence.userId]) {
-    logger.info('matchJoinAttempt: user=%s reconnecting', presence.userId);
+  if (s.players[userId]) {
+    logger.info('matchJoinAttempt: user=%s reconnecting', userId);
     return { state, accept: true };
   }
 
   // Reject if game is over
   if (s.status === 'GAME_OVER') {
-    logger.info('matchJoinAttempt: user=%s rejected — game over', presence.userId);
+    logger.info('matchJoinAttempt: user=%s rejected — game over', userId);
     return { state, accept: false, rejectMessage: 'Match has ended' };
   }
 
   // Reject if already at capacity
   if (s.playerOrder.length >= MAX_PLAYERS) {
-    logger.info('matchJoinAttempt: user=%s rejected — match full', presence.userId);
+    logger.info('matchJoinAttempt: user=%s rejected — match full', userId);
     return { state, accept: false, rejectMessage: 'Match is full' };
   }
 
@@ -382,7 +408,7 @@ export function matchJoin(
 
   for (let i = 0; i < presences.length; i++) {
     const presence = presences[i];
-    const userId = presence.userId;
+    const userId = presenceUserId(presence);
 
     // ── Reconnecting player ──
     if (s.players[userId]) {
@@ -481,7 +507,7 @@ export function matchLeave(
 
   for (let i = 0; i < presences.length; i++) {
     const presence = presences[i];
-    const userId = presence.userId;
+    const userId = presenceUserId(presence);
 
     if (!s.players[userId]) {
       continue;
@@ -561,9 +587,10 @@ export function matchLoop(
   if (messages) {
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i];
-      const senderId = message.sender.userId;
+      const senderId = presenceUserId(message.sender);
+      const opCode = messageOpCode(message);
 
-      switch (message.opCode) {
+      switch (opCode) {
         case (OpCode.START_GAME as number): {
           if (senderId !== s.playerOrder[0]) {
             logger.warn('matchLoop: START_GAME rejected, %s is not host', senderId);
@@ -594,25 +621,42 @@ export function matchLoop(
           let movePayload: MovePayload;
           try {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            movePayload = JSON.parse(nk.binaryToString(message.data));
+            movePayload = JSON.parse(decodeMessageData(nk, message));
           } catch (_e) {
             logger.warn('matchLoop: invalid MOVE payload from user=%s', senderId);
             break;
           }
+
+          if (typeof movePayload.cellIndex !== 'number') {
+            logger.warn('matchLoop: MOVE missing cellIndex from user=%s', senderId);
+            break;
+          }
+
           s = handleMove(s, senderId, movePayload, dispatcher, nk, logger);
           break;
         }
 
         case (OpCode.FORFEIT as number): {
+          let reason: 'timeout' | 'disconnect' = 'disconnect';
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const parsed = JSON.parse(decodeMessageData(nk, message)) as { reason?: string };
+            if (parsed.reason === 'timeout') {
+              reason = 'timeout';
+            }
+          } catch (_e) {
+            // Ignore malformed forfeit payload; sender/opcode are enough.
+          }
+
           // Voluntary forfeit
-          if (s.playerOrder.length === MAX_PLAYERS) {
+          if (s.playerOrder.length === MAX_PLAYERS && (s.status === 'PLAYER_X_TURN' || s.status === 'PLAYER_O_TURN')) {
             const winnerId = s.playerOrder[0] === senderId
               ? s.playerOrder[1]
               : s.playerOrder[0];
 
             const forfeitPayload: ForfeitPayload = {
               userId: senderId,
-              reason: 'disconnect',
+              reason,
             };
             broadcastMessage(dispatcher, OpCode.FORFEIT, forfeitPayload);
 
@@ -622,7 +666,7 @@ export function matchLoop(
         }
 
         default:
-          logger.warn('matchLoop: unknown opCode=%d from user=%s', message.opCode, senderId);
+          logger.warn('matchLoop: unknown opCode=%d from user=%s', opCode, senderId);
       }
     }
   }

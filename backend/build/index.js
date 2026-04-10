@@ -167,6 +167,31 @@ var __nakamaExports = (() => {
     }
     return count;
   }
+  function presenceUserId(presence) {
+    if (!presence)
+      return "";
+    const p = presence;
+    return p.userId || p.user_id || "";
+  }
+  function messageOpCode(message) {
+    const m = message;
+    if (typeof m.opCode === "number")
+      return m.opCode;
+    if (typeof m.op_code === "number")
+      return m.op_code;
+    return -1;
+  }
+  function decodeMessageData(nk, message) {
+    const m = message;
+    if (typeof m.data === "string") {
+      return m.data;
+    }
+    try {
+      return nk.binaryToString(message.data);
+    } catch (_e) {
+      return "";
+    }
+  }
   function resolveGameEnd(state, winnerUserId, loserUserId, isDraw, nk, dispatcher, logger) {
     state.status = "GAME_OVER";
     state.winner = winnerUserId;
@@ -321,16 +346,17 @@ var __nakamaExports = (() => {
   }
   function matchJoinAttempt(_ctx, logger, _nk, _dispatcher, _tick, state, presence, _metadata) {
     const s = state;
-    if (s.players[presence.userId]) {
-      logger.info("matchJoinAttempt: user=%s reconnecting", presence.userId);
+    const userId = presenceUserId(presence);
+    if (s.players[userId]) {
+      logger.info("matchJoinAttempt: user=%s reconnecting", userId);
       return { state, accept: true };
     }
     if (s.status === "GAME_OVER") {
-      logger.info("matchJoinAttempt: user=%s rejected \u2014 game over", presence.userId);
+      logger.info("matchJoinAttempt: user=%s rejected \u2014 game over", userId);
       return { state, accept: false, rejectMessage: "Match has ended" };
     }
     if (s.playerOrder.length >= MAX_PLAYERS) {
-      logger.info("matchJoinAttempt: user=%s rejected \u2014 match full", presence.userId);
+      logger.info("matchJoinAttempt: user=%s rejected \u2014 match full", userId);
       return { state, accept: false, rejectMessage: "Match is full" };
     }
     return { state, accept: true };
@@ -339,7 +365,7 @@ var __nakamaExports = (() => {
     const s = state;
     for (let i = 0; i < presences.length; i++) {
       const presence = presences[i];
-      const userId = presence.userId;
+      const userId = presenceUserId(presence);
       if (s.players[userId]) {
         s.players[userId].connected = true;
         delete s.reconnectDeadline[userId];
@@ -405,7 +431,7 @@ var __nakamaExports = (() => {
     const s = state;
     for (let i = 0; i < presences.length; i++) {
       const presence = presences[i];
-      const userId = presence.userId;
+      const userId = presenceUserId(presence);
       if (!s.players[userId]) {
         continue;
       }
@@ -454,8 +480,9 @@ var __nakamaExports = (() => {
     if (messages) {
       for (let i = 0; i < messages.length; i++) {
         const message = messages[i];
-        const senderId = message.sender.userId;
-        switch (message.opCode) {
+        const senderId = presenceUserId(message.sender);
+        const opCode = messageOpCode(message);
+        switch (opCode) {
           case 10 /* START_GAME */: {
             if (senderId !== s.playerOrder[0]) {
               logger.warn("matchLoop: START_GAME rejected, %s is not host", senderId);
@@ -482,20 +509,32 @@ var __nakamaExports = (() => {
           case 2 /* MOVE */: {
             let movePayload;
             try {
-              movePayload = JSON.parse(nk.binaryToString(message.data));
+              movePayload = JSON.parse(decodeMessageData(nk, message));
             } catch (_e) {
               logger.warn("matchLoop: invalid MOVE payload from user=%s", senderId);
+              break;
+            }
+            if (typeof movePayload.cellIndex !== "number") {
+              logger.warn("matchLoop: MOVE missing cellIndex from user=%s", senderId);
               break;
             }
             s = handleMove(s, senderId, movePayload, dispatcher, nk, logger);
             break;
           }
           case 9 /* FORFEIT */: {
-            if (s.playerOrder.length === MAX_PLAYERS) {
+            let reason = "disconnect";
+            try {
+              const parsed = JSON.parse(decodeMessageData(nk, message));
+              if (parsed.reason === "timeout") {
+                reason = "timeout";
+              }
+            } catch (_e) {
+            }
+            if (s.playerOrder.length === MAX_PLAYERS && (s.status === "PLAYER_X_TURN" || s.status === "PLAYER_O_TURN")) {
               const winnerId = s.playerOrder[0] === senderId ? s.playerOrder[1] : s.playerOrder[0];
               const forfeitPayload = {
                 userId: senderId,
-                reason: "disconnect"
+                reason
               };
               broadcastMessage(dispatcher, 9 /* FORFEIT */, forfeitPayload);
               s = resolveGameEnd(s, winnerId, senderId, false, nk, dispatcher, logger);
@@ -503,7 +542,7 @@ var __nakamaExports = (() => {
             break;
           }
           default:
-            logger.warn("matchLoop: unknown opCode=%d from user=%s", message.opCode, senderId);
+            logger.warn("matchLoop: unknown opCode=%d from user=%s", opCode, senderId);
         }
       }
     }
