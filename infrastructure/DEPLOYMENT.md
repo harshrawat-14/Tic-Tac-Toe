@@ -81,8 +81,10 @@ Correct value is only:
 Checks:
 
 1. In Render service environment variables, remove `NAKAMA_RUNTIME_JS_ENTRYPOINT` if present.
+  - Important: Blueprint updates may not delete previously created env vars in an existing service.
+  - Open the service dashboard and remove it manually.
 2. Ensure [backend/nakama-config.yml](../backend/nakama-config.yml) has `runtime.js_entrypoint: "index.js"`.
-3. Ensure [backend/start-render.sh](../backend/start-render.sh) includes `--runtime.js_entrypoint "index.js"` (this repo now enforces it).
+3. Ensure [backend/start-render.sh](../backend/start-render.sh) includes `--runtime.js_entrypoint "index.js"` (this repo now enforces it and unsets stale env override).
 4. Ensure image copies the file to `/nakama/data/modules/index.js` (see [backend/Dockerfile.render](../backend/Dockerfile.render)).
 
 ## Cost Estimate (us-east-1, monthly)
