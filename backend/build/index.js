@@ -56,15 +56,17 @@ var __nakamaExports = (() => {
   var STATS_COLLECTION = "player_stats";
   var STATS_KEY = "stats";
   function initLeaderboard(nk, logger) {
+    const sortOrder = "desc";
+    const operator = "set";
     try {
       nk.leaderboardCreate(
         LEADERBOARD_ID,
         // id
         false,
         // authoritative — false so RPCs can write
-        nkruntime.SortOrder.DESCENDING,
+        sortOrder,
         // sortOrder
-        nkruntime.Operator.SET,
+        operator,
         // operator — latest ELO overwrites previous
         void 0,
         // resetSchedule  (never resets)
@@ -75,7 +77,12 @@ var __nakamaExports = (() => {
       );
       logger.info('Leaderboard "%s" created / verified', LEADERBOARD_ID);
     } catch (e) {
-      logger.info('Leaderboard "%s" already exists, skipping create', LEADERBOARD_ID);
+      const msg = String(e);
+      if (msg.toLowerCase().includes("already exists")) {
+        logger.info('Leaderboard "%s" already exists, skipping create', LEADERBOARD_ID);
+        return;
+      }
+      logger.error('Failed to create leaderboard "%s": %s', LEADERBOARD_ID, msg);
     }
   }
   function getOrCreatePlayerStats(nk, userId, displayName) {
@@ -105,7 +112,7 @@ var __nakamaExports = (() => {
       eloRating: DEFAULT_ELO
     };
   }
-  function writePlayerStats(nk, userId, stats) {
+  function writePlayerStats(nk, userId, stats, logger) {
     nk.storageWrite([
       {
         collection: STATS_COLLECTION,
@@ -117,18 +124,37 @@ var __nakamaExports = (() => {
         permissionWrite: 0
       }
     ]);
-    nk.leaderboardRecordWrite(
-      LEADERBOARD_ID,
-      userId,
-      stats.displayName || userId,
-      stats.eloRating,
-      0,
-      // subscore
-      void 0,
-      // metadata
-      void 0
-      // operator override — use leaderboard default ('set')
-    );
+    try {
+      nk.leaderboardRecordWrite(
+        LEADERBOARD_ID,
+        userId,
+        stats.displayName || userId,
+        stats.eloRating,
+        0,
+        // subscore
+        void 0,
+        // metadata
+        void 0
+        // operator override — use leaderboard default ('set')
+      );
+    } catch (e) {
+      const msg = String(e);
+      logger.warn("writePlayerStats: leaderboard write failed, attempting create+retry: %s", msg);
+      try {
+        initLeaderboard(nk, logger);
+        nk.leaderboardRecordWrite(
+          LEADERBOARD_ID,
+          userId,
+          stats.displayName || userId,
+          stats.eloRating,
+          0,
+          void 0,
+          void 0
+        );
+      } catch (retryErr) {
+        logger.error("writePlayerStats: leaderboard write retry failed: %s", String(retryErr));
+      }
+    }
   }
 
   // src/match_handler.ts
@@ -197,34 +223,38 @@ var __nakamaExports = (() => {
     state.winner = winnerUserId;
     state.isDraw = isDraw;
     const eloChanges = {};
-    if (isDraw && state.playerOrder.length === 2) {
-      const userA = state.playerOrder[0];
-      const userB = state.playerOrder[1];
-      const statsA = getOrCreatePlayerStats(nk, userA, state.players[userA].displayName);
-      const statsB = getOrCreatePlayerStats(nk, userB, state.players[userB].displayName);
-      const elo = calculateEloChange(statsA.eloRating, statsB.eloRating, 0.5);
-      updateAndWriteStats(nk, userA, statsA, "draw", elo.newA, logger);
-      updateAndWriteStats(nk, userB, statsB, "draw", elo.newB, logger);
-      eloChanges[userA] = elo.deltaA;
-      eloChanges[userB] = elo.deltaB;
-      state.players[userA].eloRating = elo.newA;
-      state.players[userA].draws++;
-      state.players[userB].eloRating = elo.newB;
-      state.players[userB].draws++;
-    } else if (winnerUserId && loserUserId) {
-      const winnerStats = getOrCreatePlayerStats(nk, winnerUserId, state.players[winnerUserId].displayName);
-      const loserStats = getOrCreatePlayerStats(nk, loserUserId, state.players[loserUserId].displayName);
-      const elo = calculateEloChange(winnerStats.eloRating, loserStats.eloRating, 1);
-      updateAndWriteStats(nk, winnerUserId, winnerStats, "win", elo.newA, logger);
-      updateAndWriteStats(nk, loserUserId, loserStats, "loss", elo.newB, logger);
-      eloChanges[winnerUserId] = elo.deltaA;
-      eloChanges[loserUserId] = elo.deltaB;
-      state.players[winnerUserId].eloRating = elo.newA;
-      state.players[winnerUserId].wins++;
-      state.players[winnerUserId].winStreak++;
-      state.players[loserUserId].eloRating = elo.newB;
-      state.players[loserUserId].losses++;
-      state.players[loserUserId].winStreak = 0;
+    try {
+      if (isDraw && state.playerOrder.length === 2) {
+        const userA = state.playerOrder[0];
+        const userB = state.playerOrder[1];
+        const statsA = getOrCreatePlayerStats(nk, userA, state.players[userA].displayName);
+        const statsB = getOrCreatePlayerStats(nk, userB, state.players[userB].displayName);
+        const elo = calculateEloChange(statsA.eloRating, statsB.eloRating, 0.5);
+        updateAndWriteStats(nk, userA, statsA, "draw", elo.newA, logger);
+        updateAndWriteStats(nk, userB, statsB, "draw", elo.newB, logger);
+        eloChanges[userA] = elo.deltaA;
+        eloChanges[userB] = elo.deltaB;
+        state.players[userA].eloRating = elo.newA;
+        state.players[userA].draws++;
+        state.players[userB].eloRating = elo.newB;
+        state.players[userB].draws++;
+      } else if (winnerUserId && loserUserId) {
+        const winnerStats = getOrCreatePlayerStats(nk, winnerUserId, state.players[winnerUserId].displayName);
+        const loserStats = getOrCreatePlayerStats(nk, loserUserId, state.players[loserUserId].displayName);
+        const elo = calculateEloChange(winnerStats.eloRating, loserStats.eloRating, 1);
+        updateAndWriteStats(nk, winnerUserId, winnerStats, "win", elo.newA, logger);
+        updateAndWriteStats(nk, loserUserId, loserStats, "loss", elo.newB, logger);
+        eloChanges[winnerUserId] = elo.deltaA;
+        eloChanges[loserUserId] = elo.deltaB;
+        state.players[winnerUserId].eloRating = elo.newA;
+        state.players[winnerUserId].wins++;
+        state.players[winnerUserId].winStreak++;
+        state.players[loserUserId].eloRating = elo.newB;
+        state.players[loserUserId].losses++;
+        state.players[loserUserId].winStreak = 0;
+      }
+    } catch (e) {
+      logger.error("resolveGameEnd: failed to persist/update stats: %s", String(e));
     }
     const gameOverPayload = {
       winner: winnerUserId,
@@ -241,7 +271,7 @@ var __nakamaExports = (() => {
     );
     return state;
   }
-  function updateAndWriteStats(nk, userId, stats, result, newElo, _logger) {
+  function updateAndWriteStats(nk, userId, stats, result, newElo, logger) {
     stats.eloRating = newElo;
     stats.totalGames++;
     if (result === "win") {
@@ -256,7 +286,7 @@ var __nakamaExports = (() => {
     } else {
       stats.draws++;
     }
-    writePlayerStats(nk, userId, stats);
+    writePlayerStats(nk, userId, stats, logger);
   }
   function handleMove(state, userId, payload, dispatcher, nk, logger) {
     if (userId !== state.currentTurn) {

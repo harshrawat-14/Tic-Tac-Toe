@@ -51,20 +51,27 @@ export function initLeaderboard(
   nk: nkruntime.Nakama,
   logger: nkruntime.Logger,
 ): void {
+  const sortOrder = 'desc' as unknown as nkruntime.SortOrder;
+  const operator = 'set' as unknown as nkruntime.Operator;
+
   try {
     nk.leaderboardCreate(
       LEADERBOARD_ID,   // id
       false,            // authoritative — false so RPCs can write
-      nkruntime.SortOrder.DESCENDING, // sortOrder
-      nkruntime.Operator.SET,         // operator — latest ELO overwrites previous
+      sortOrder,        // sortOrder
+      operator,         // operator — latest ELO overwrites previous
       undefined,        // resetSchedule  (never resets)
       undefined,        // metadata
       true,             // enableRank — so records get a rank number
     );
     logger.info('Leaderboard "%s" created / verified', LEADERBOARD_ID);
   } catch (e) {
-    // leaderboardCreate throws if it already exists — that's fine
-    logger.info('Leaderboard "%s" already exists, skipping create', LEADERBOARD_ID);
+    const msg = String(e);
+    if (msg.toLowerCase().includes('already exists')) {
+      logger.info('Leaderboard "%s" already exists, skipping create', LEADERBOARD_ID);
+      return;
+    }
+    logger.error('Failed to create leaderboard "%s": %s', LEADERBOARD_ID, msg);
   }
 }
 
@@ -121,6 +128,7 @@ export function writePlayerStats(
   nk: nkruntime.Nakama,
   userId: string,
   stats: PlayerStats,
+  logger: nkruntime.Logger,
 ): void {
   // 1. Write to storage
   nk.storageWrite([
@@ -136,13 +144,33 @@ export function writePlayerStats(
   ]);
 
   // 2. Update leaderboard score (operator 'set' replaces previous)
-  nk.leaderboardRecordWrite(
-    LEADERBOARD_ID,
-    userId,
-    stats.displayName || userId,
-    stats.eloRating,
-    0,                // subscore
-    undefined,        // metadata
-    undefined,        // operator override — use leaderboard default ('set')
-  );
+  try {
+    nk.leaderboardRecordWrite(
+      LEADERBOARD_ID,
+      userId,
+      stats.displayName || userId,
+      stats.eloRating,
+      0,                // subscore
+      undefined,        // metadata
+      undefined,        // operator override — use leaderboard default ('set')
+    );
+  } catch (e) {
+    const msg = String(e);
+    logger.warn('writePlayerStats: leaderboard write failed, attempting create+retry: %s', msg);
+
+    try {
+      initLeaderboard(nk, logger);
+      nk.leaderboardRecordWrite(
+        LEADERBOARD_ID,
+        userId,
+        stats.displayName || userId,
+        stats.eloRating,
+        0,
+        undefined,
+        undefined,
+      );
+    } catch (retryErr) {
+      logger.error('writePlayerStats: leaderboard write retry failed: %s', String(retryErr));
+    }
+  }
 }

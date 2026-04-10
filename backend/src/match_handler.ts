@@ -136,45 +136,49 @@ function resolveGameEnd(
 
   const eloChanges: Record<string, number> = {};
 
-  if (isDraw && state.playerOrder.length === 2) {
-    // Both players get draw adjustment
-    const userA = state.playerOrder[0];
-    const userB = state.playerOrder[1];
-    const statsA = getOrCreatePlayerStats(nk, userA, state.players[userA].displayName);
-    const statsB = getOrCreatePlayerStats(nk, userB, state.players[userB].displayName);
+  try {
+    if (isDraw && state.playerOrder.length === 2) {
+      // Both players get draw adjustment
+      const userA = state.playerOrder[0];
+      const userB = state.playerOrder[1];
+      const statsA = getOrCreatePlayerStats(nk, userA, state.players[userA].displayName);
+      const statsB = getOrCreatePlayerStats(nk, userB, state.players[userB].displayName);
 
-    const elo = calculateEloChange(statsA.eloRating, statsB.eloRating, 0.5);
+      const elo = calculateEloChange(statsA.eloRating, statsB.eloRating, 0.5);
 
-    updateAndWriteStats(nk, userA, statsA, 'draw', elo.newA, logger);
-    updateAndWriteStats(nk, userB, statsB, 'draw', elo.newB, logger);
+      updateAndWriteStats(nk, userA, statsA, 'draw', elo.newA, logger);
+      updateAndWriteStats(nk, userB, statsB, 'draw', elo.newB, logger);
 
-    eloChanges[userA] = elo.deltaA;
-    eloChanges[userB] = elo.deltaB;
+      eloChanges[userA] = elo.deltaA;
+      eloChanges[userB] = elo.deltaB;
 
-    // Update in-match player state
-    state.players[userA].eloRating = elo.newA;
-    state.players[userA].draws++;
-    state.players[userB].eloRating = elo.newB;
-    state.players[userB].draws++;
-  } else if (winnerUserId && loserUserId) {
-    const winnerStats = getOrCreatePlayerStats(nk, winnerUserId, state.players[winnerUserId].displayName);
-    const loserStats = getOrCreatePlayerStats(nk, loserUserId, state.players[loserUserId].displayName);
+      // Update in-match player state
+      state.players[userA].eloRating = elo.newA;
+      state.players[userA].draws++;
+      state.players[userB].eloRating = elo.newB;
+      state.players[userB].draws++;
+    } else if (winnerUserId && loserUserId) {
+      const winnerStats = getOrCreatePlayerStats(nk, winnerUserId, state.players[winnerUserId].displayName);
+      const loserStats = getOrCreatePlayerStats(nk, loserUserId, state.players[loserUserId].displayName);
 
-    const elo = calculateEloChange(winnerStats.eloRating, loserStats.eloRating, 1);
+      const elo = calculateEloChange(winnerStats.eloRating, loserStats.eloRating, 1);
 
-    updateAndWriteStats(nk, winnerUserId, winnerStats, 'win', elo.newA, logger);
-    updateAndWriteStats(nk, loserUserId, loserStats, 'loss', elo.newB, logger);
+      updateAndWriteStats(nk, winnerUserId, winnerStats, 'win', elo.newA, logger);
+      updateAndWriteStats(nk, loserUserId, loserStats, 'loss', elo.newB, logger);
 
-    eloChanges[winnerUserId] = elo.deltaA;
-    eloChanges[loserUserId] = elo.deltaB;
+      eloChanges[winnerUserId] = elo.deltaA;
+      eloChanges[loserUserId] = elo.deltaB;
 
-    // Update in-match player state
-    state.players[winnerUserId].eloRating = elo.newA;
-    state.players[winnerUserId].wins++;
-    state.players[winnerUserId].winStreak++;
-    state.players[loserUserId].eloRating = elo.newB;
-    state.players[loserUserId].losses++;
-    state.players[loserUserId].winStreak = 0;
+      // Update in-match player state
+      state.players[winnerUserId].eloRating = elo.newA;
+      state.players[winnerUserId].wins++;
+      state.players[winnerUserId].winStreak++;
+      state.players[loserUserId].eloRating = elo.newB;
+      state.players[loserUserId].losses++;
+      state.players[loserUserId].winStreak = 0;
+    }
+  } catch (e) {
+    logger.error('resolveGameEnd: failed to persist/update stats: %s', String(e));
   }
 
   const gameOverPayload: GameOverPayload = {
@@ -202,7 +206,7 @@ function updateAndWriteStats(
   stats: PlayerStats,
   result: 'win' | 'loss' | 'draw',
   newElo: number,
-  _logger: nkruntime.Logger,
+  logger: nkruntime.Logger,
 ): void {
   stats.eloRating = newElo;
   stats.totalGames++;
@@ -221,7 +225,7 @@ function updateAndWriteStats(
     // Draw does NOT reset the win streak
   }
 
-  writePlayerStats(nk, userId, stats);
+  writePlayerStats(nk, userId, stats, logger);
 }
 
 // ─── Helper: handle a MOVE message ──────────────────────────────────────────
