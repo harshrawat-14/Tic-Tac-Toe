@@ -1,5 +1,50 @@
 # Deployment Guide — Nakama TicTacToe
 
+## Quick Deploy (Render backend + Vercel frontend)
+
+### 1) Deploy backend on Render
+
+1. Push this repo to GitHub.
+2. In Render, create a **Blueprint** service from the repo.
+3. Render will use [render.yaml](../render.yaml) to create:
+  - PostgreSQL database: `ttt-postgres`
+  - Docker web service: `ttt-nakama` (from [backend/Dockerfile.render](../backend/Dockerfile.render))
+4. After deploy, copy backend public URL (example: `https://ttt-nakama.onrender.com`).
+
+Required backend secrets are auto-generated in the blueprint:
+- `NAKAMA_SERVER_KEY`
+- `NAKAMA_SESSION_ENCRYPTION_KEY`
+- `NAKAMA_SESSION_REFRESH_ENCRYPTION_KEY`
+- `NAKAMA_RUNTIME_HTTP_KEY`
+
+> Save `NAKAMA_SERVER_KEY` value. Frontend must use the same key.
+
+### 2) Deploy frontend on Vercel
+
+1. Import repo in Vercel.
+2. Set project root to `frontend`.
+3. Vercel picks [frontend/vercel.json](../frontend/vercel.json) automatically.
+4. Add environment variables:
+  - `VITE_NAKAMA_URL=https://<your-render-backend>.onrender.com`
+  - `VITE_NAKAMA_SERVER_KEY=<same NAKAMA_SERVER_KEY from Render>`
+5. Deploy.
+
+### 3) Post-deploy validation
+
+1. Register/login from the Vercel URL.
+2. Open two browser sessions and start matchmaking.
+3. Validate all end states:
+  - win verdict
+  - draw verdict
+  - forfeit verdict
+4. Confirm backend logs in Render show `GAME_OVER` events.
+
+### 4) Production notes
+
+- Render free instances may spin down when idle; first request can be slow.
+- Keep frontend and backend in the same region when possible.
+- If you rotate `NAKAMA_SERVER_KEY` in Render, also update Vercel env and redeploy frontend.
+
 ## Cost Estimate (us-east-1, monthly)
 
 | Service | Config | ~Cost/mo |

@@ -2,9 +2,26 @@ import { Client, Session, Socket } from '@heroiclabs/nakama-js';
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const NAKAMA_HOST = import.meta.env.VITE_NAKAMA_HOST || 'localhost';
-const NAKAMA_PORT = import.meta.env.VITE_NAKAMA_PORT || '7350';
-const NAKAMA_SSL = import.meta.env.VITE_NAKAMA_USE_SSL === 'true';
+function getNakamaEndpoint(): { host: string; port: string; ssl: boolean } {
+  const rawUrl = import.meta.env.VITE_NAKAMA_URL as string | undefined;
+
+  if (rawUrl && rawUrl.trim().length > 0) {
+    const u = new URL(rawUrl);
+    return {
+      host: u.hostname,
+      port: u.port || (u.protocol === 'https:' ? '443' : '80'),
+      ssl: u.protocol === 'https:',
+    };
+  }
+
+  return {
+    host: import.meta.env.VITE_NAKAMA_HOST || 'localhost',
+    port: import.meta.env.VITE_NAKAMA_PORT || '7350',
+    ssl: import.meta.env.VITE_NAKAMA_USE_SSL === 'true',
+  };
+}
+
+const { host: NAKAMA_HOST, port: NAKAMA_PORT, ssl: NAKAMA_SSL } = getNakamaEndpoint();
 const SERVER_KEY = import.meta.env.VITE_NAKAMA_SERVER_KEY || 'defaultkey';
 
 // ─── Singleton Client ─────────────────────────────────────────────────────────

@@ -1,0 +1,42 @@
+databases:
+  - name: ttt-postgres
+    plan: free
+    databaseName: nakama
+    user: nakama
+
+services:
+  - type: web
+    name: ttt-nakama
+    env: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile.render
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: ttt-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ttt-postgres
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: ttt-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: ttt-postgres
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: ttt-postgres
+          property: database
+      - key: NAKAMA_SERVER_KEY
+        generateValue: true
+      - key: NAKAMA_SESSION_ENCRYPTION_KEY
+        generateValue: true
+      - key: NAKAMA_SESSION_REFRESH_ENCRYPTION_KEY
+        generateValue: true
+      - key: NAKAMA_RUNTIME_HTTP_KEY
+        generateValue: true

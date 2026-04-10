@@ -1,0 +1,27 @@
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY tsconfig.json ./
+COPY src ./src
+
+RUN npm run build
+
+FROM heroiclabs/nakama:3.21.1
+
+USER root
+RUN apk add --no-cache nodejs npm
+
+WORKDIR /nakama/data/modules
+COPY --from=builder /app/build/index.js ./index.js
+
+COPY nakama-config.yml /nakama/data/nakama-config.yml
+COPY start-render.sh /nakama/start-render.sh
+RUN chmod +x /nakama/start-render.sh
+
+EXPOSE 7350 7349 7351
+
+ENTRYPOINT ["/nakama/start-render.sh"]

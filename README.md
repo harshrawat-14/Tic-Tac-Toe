@@ -711,6 +711,7 @@ vercel --prod
 
 | Variable | Where Set | Purpose |
 |---|---|---|
+| `VITE_NAKAMA_URL` | Vercel env | Full Nakama URL (recommended, e.g. `https://your-backend.onrender.com`) |
 | `VITE_NAKAMA_HOST` | Vercel env | Hostname of the Nakama API (e.g. `api.yourdomain.com`) |
 | `VITE_NAKAMA_PORT` | Vercel env | `443` in production, `7350` locally |
 | `VITE_NAKAMA_USE_SSL` | Vercel env | `true` in production, `false` locally |
