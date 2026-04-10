@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+.eslintrc.cjs
+vite.config.ts
+postcss.config.cjs
+tailwind.config.ts

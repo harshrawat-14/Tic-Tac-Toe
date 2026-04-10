@@ -100,7 +100,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
 
     console.log(`[GameStore] OpCode=${opCode} Payload=`, dataStr);
 
-    let payload: any;
+    let payload: unknown;
     try {
       payload = JSON.parse(dataStr);
     } catch {
@@ -283,9 +283,10 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         const NAKAMA_SSL = import.meta.env.VITE_NAKAMA_USE_SSL === 'true';
         const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
 
-        socket.onmatchmakermatched = (matched: any) => {
-          console.log('[GameStore] Matchmaker matched:', matched);
-          const mId = matched.match_id || matched.matchId;
+        socket.onmatchmakermatched = (matched: unknown) => {
+          const m = matched as { match_id?: string; matchId?: string };
+          console.log('[GameStore] Matchmaker matched:', m);
+          const mId = m.match_id || m.matchId;
           if (mId) {
             set({ matchmakingTicket: null });
             get().joinMatch(mId);
@@ -336,9 +337,10 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         const NAKAMA_SSL = import.meta.env.VITE_NAKAMA_USE_SSL === 'true';
         const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
 
-        socket.onmatchmakermatched = (matched: any) => {
-          console.log('[GameStore] Matchmaker matched:', matched);
-          const mId = matched.match_id || matched.matchId;
+        socket.onmatchmakermatched = (matched: unknown) => {
+          const m = matched as { match_id?: string; matchId?: string };
+          console.log('[GameStore] Matchmaker matched:', m);
+          const mId = m.match_id || m.matchId;
           if (mId) {
             set({ matchmakingTicket: null });
             get().joinMatch(mId);
