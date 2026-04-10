@@ -35,8 +35,8 @@ session:
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 runtime:
-  # The filename (not full path) of the JS bundle inside /nakama/data/modules/.
-  js_entrypoint: "index.js"
+  # Use an absolute path to avoid accidental path-join duplication in some env overrides.
+  js_entrypoint: "/nakama/data/modules/index.js"
   # Nakama requires lua_max_count >= 1 even when only using the JS runtime.
   # Set to 1 (minimum) to pass config validation; Lua modules are never loaded.
   lua_min_count: 1
