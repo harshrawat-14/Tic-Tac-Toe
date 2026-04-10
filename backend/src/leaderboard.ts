@@ -128,6 +128,7 @@ export function writePlayerStats(
       collection: STATS_COLLECTION,
       key: STATS_KEY,
       userId: userId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       value: stats as unknown as { [key: string]: any },
       permissionRead: 1,
       permissionWrite: 0,

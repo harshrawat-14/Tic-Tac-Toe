@@ -170,6 +170,32 @@ export default function Login() {
               </>
             )}
           </button>
+
+          {/* Tester Auto-Join Button (Dev only) */}
+          <button
+            id="test-button"
+            onClick={async () => {
+              const randomName = `Tester_${Math.floor(Math.random() * 9000) + 1000}`;
+              console.log('[Tester] Attempting auto-login with:', randomName);
+              setNickname(randomName);
+              setIsLoading(true);
+              try {
+                await connect(randomName);
+                console.log('[Tester] Login success, navigating to lobby');
+                navigate('/lobby');
+              } catch (err) {
+                console.error('[Tester] Test connect failed:', err);
+                setError('Test connect failed');
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+            disabled={isLoading}
+            className="w-full text-xs text-game-bg-muted/60 hover:text-brand-400 transition-colors py-1 flex items-center justify-center gap-1.5 border border-dashed border-game-bg-border/20 rounded-lg hover:border-brand-400/30"
+          >
+            <Zap className="w-3 h-3" />
+            Quick Test (Random User)
+          </button>
         </div>
 
         {/* Footer decoration */}

@@ -50,7 +50,7 @@ export default function Lobby() {
     if (!session) return;
     setIsCreating(true);
     try {
-      const res = await nakamaClient.rpc(session, 'create_room', JSON.stringify({ mode: 'classic' }));
+      const res = await nakamaClient.rpc(session, 'create_room', { mode: 'classic' });
       const data = (typeof res.payload === 'string'
         ? JSON.parse(res.payload)
         : res.payload) as CreateRoomResponse;

@@ -91,12 +91,14 @@ export const useGameStore = create<GameStoreState>((set, get) => {
 
   // ── Socket event callbacks ────────────────────────────────────────────────
 
-  function handleMatchData(rawMatchData: unknown): void {
+    function handleMatchData(rawMatchData: unknown): void {
     const matchData = rawMatchData as MatchData;
-    const opCode = matchData.op_code; // This is already a number
+    const opCode = matchData.op_code; 
     const dataStr = matchData.data
       ? new TextDecoder().decode(matchData.data as Uint8Array)
       : '{}';
+
+    console.log(`[GameStore] OpCode=${opCode} Payload=`, dataStr);
 
     let payload: any;
     try {
@@ -281,11 +283,12 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         const NAKAMA_SSL = import.meta.env.VITE_NAKAMA_USE_SSL === 'true';
         const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
 
-        socket.onmatchmakermatched = (matched) => {
-          const matchedData = matched as { match_id?: string };
-          if (matchedData.match_id) {
+        socket.onmatchmakermatched = (matched: any) => {
+          console.log('[GameStore] Matchmaker matched:', matched);
+          const mId = matched.match_id || matched.matchId;
+          if (mId) {
             set({ matchmakingTicket: null });
-            get().joinMatch(matchedData.match_id);
+            get().joinMatch(mId);
           }
         };
 
@@ -333,11 +336,12 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         const NAKAMA_SSL = import.meta.env.VITE_NAKAMA_USE_SSL === 'true';
         const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
 
-        socket.onmatchmakermatched = (matched) => {
-          const matchedData = matched as { match_id?: string };
-          if (matchedData.match_id) {
+        socket.onmatchmakermatched = (matched: any) => {
+          console.log('[GameStore] Matchmaker matched:', matched);
+          const mId = matched.match_id || matched.matchId;
+          if (mId) {
             set({ matchmakingTicket: null });
-            get().joinMatch(matchedData.match_id);
+            get().joinMatch(mId);
           }
         };
 

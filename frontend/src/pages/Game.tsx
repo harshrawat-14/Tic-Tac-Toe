@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Flag } from 'lucide-react';
+import { Flag, Loader2 } from 'lucide-react';
 import { useGameStore } from '@/store/gameStore';
 import GameBoard from '@/components/GameBoard';
 import PlayerBar from '@/components/PlayerBar';
 import TurnIndicator from '@/components/TurnIndicator';
 import TurnTimer from '@/components/TurnTimer';
 import DisconnectionOverlay from '@/components/DisconnectionOverlay';
+
+import { OpCode } from '@/types/game';
 
 export default function Game() {
   const navigate = useNavigate();

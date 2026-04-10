@@ -32,13 +32,17 @@ const mockSocket = {
   removeMatchmaker: vi.fn().mockResolvedValue(undefined),
   joinMatch: vi.fn().mockResolvedValue(undefined),
   leaveMatch: vi.fn().mockResolvedValue(undefined),
+  connect: vi.fn().mockResolvedValue(undefined),
   disconnect: vi.fn(),
   ondisconnect: null as unknown,
   onmatchdata: null as unknown,
 };
 
 vi.mock('@/lib/nakama', () => ({
-  nakamaClient: {},
+  nakamaClient: {
+    createSocket: vi.fn().mockImplementation(() => mockSocket),
+    rpc: vi.fn(),
+  },
   authenticateDevice: vi.fn().mockResolvedValue({
     user_id: 'user-x',
     username: 'PlayerX',
@@ -134,10 +138,14 @@ describe('useGameStore — handleSocketMessage', () => {
   let useGameStore: Awaited<ReturnType<typeof getStore>>;
 
   beforeEach(async () => {
-    // Reset module registry to get a fresh store per test
+    // Reset module registry and clear mocks to get a fresh store and clean spies per test
     vi.resetModules();
+    vi.clearAllMocks();
     vi.mock('@/lib/nakama', () => ({
-      nakamaClient: {},
+      nakamaClient: {
+        createSocket: vi.fn().mockImplementation(() => mockSocket),
+        rpc: vi.fn(),
+      },
       authenticateDevice: vi.fn().mockResolvedValue({
         user_id: X_ID,
         username: 'PlayerX',
@@ -369,8 +377,12 @@ describe('useGameStore — makeMove', () => {
 
   beforeEach(async () => {
     vi.resetModules();
+    vi.clearAllMocks();
     vi.mock('@/lib/nakama', () => ({
-      nakamaClient: {},
+      nakamaClient: {
+        createSocket: vi.fn().mockImplementation(() => mockSocket),
+        rpc: vi.fn(),
+      },
       authenticateDevice: vi.fn().mockResolvedValue({
         user_id: X_ID,
         username: 'PlayerX',

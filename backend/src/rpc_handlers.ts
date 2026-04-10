@@ -2,7 +2,7 @@
 // Each export matches `nkruntime.RpcFunction` signature:
 //   (ctx, logger, nk, payload: string) => string | void
 
-import {
+import type {
   CreateRoomRequest,
   CreateRoomResponse,
   GetLeaderboardRequest,

@@ -6,6 +6,7 @@
     "watch": "npx esbuild src/main.ts --bundle --format=iife --outfile=build/index.js --watch",
     "lint": "eslint src --ext .ts --max-warnings 0",
     "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },

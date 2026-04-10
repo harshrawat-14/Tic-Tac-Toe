@@ -32,8 +32,9 @@
   }
   function isBoardFull(board) {
     for (let i = 0; i < board.length; i++) {
-      if (board[i] === null)
+      if (board[i] === null) {
         return false;
+      }
     }
     return true;
   }
@@ -110,6 +111,7 @@
         collection: STATS_COLLECTION,
         key: STATS_KEY,
         userId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         value: stats,
         permissionRead: 1,
         permissionWrite: 0
@@ -342,8 +344,8 @@
         s.players[userId].connected = true;
         delete s.reconnectDeadline[userId];
         logger.info("matchJoin: user=%s reconnected", userId);
-        const gameState = { state: s };
-        broadcastMessage(dispatcher, 1 /* GAME_STATE */, gameState, [presence]);
+        const gameState2 = { state: s };
+        broadcastMessage(dispatcher, 1 /* GAME_STATE */, gameState2, [presence]);
         continue;
       }
       const symbol = s.playerOrder.length === 0 ? "X" : "O";
@@ -368,11 +370,8 @@
         symbol,
         s.playerOrder.length
       );
-      broadcastMessage(dispatcher, 5 /* PLAYER_JOINED */, {
-        userId,
-        displayName: playerState.displayName,
-        symbol
-      });
+      const gameState = { state: s };
+      broadcastMessage(dispatcher, 1 /* GAME_STATE */, gameState);
     }
     if (s.playerOrder.length === MAX_PLAYERS && s.status === "WAITING") {
       let isPrivate = false;
@@ -381,6 +380,7 @@
           const labelData = JSON.parse(_ctx.matchLabel);
           isPrivate = labelData.type === "private";
         } catch (e) {
+          logger.error("matchJoinLabel: failed to parse match label: %s", e);
         }
       }
       if (isPrivate) {
@@ -406,8 +406,9 @@
     for (let i = 0; i < presences.length; i++) {
       const presence = presences[i];
       const userId = presence.userId;
-      if (!s.players[userId])
+      if (!s.players[userId]) {
         continue;
+      }
       s.players[userId].connected = false;
       if (s.status === "GAME_OVER") {
         logger.info("matchLeave: user=%s left after game over", userId);
@@ -416,8 +417,9 @@
       if (s.status === "WAITING") {
         delete s.players[userId];
         const idx = s.playerOrder.indexOf(userId);
-        if (idx !== -1)
+        if (idx !== -1) {
           s.playerOrder.splice(idx, 1);
+        }
         delete s.turnForfeits[userId];
         logger.info("matchLeave: user=%s left during WAITING, removed from match", userId);
         continue;
@@ -469,8 +471,9 @@
             }
             s.status = "PLAYER_X_TURN";
             s.currentTurn = s.playerOrder[0];
-            if (s.mode === "timed")
+            if (s.mode === "timed") {
               s.turnTimeLeft = TURN_TIME_SECONDS;
+            }
             logger.info("matchLoop: host started match=%s", s.matchId);
             const gameState = { state: s };
             broadcastMessage(dispatcher, 1 /* GAME_STATE */, gameState);
@@ -758,14 +761,14 @@
   };
 
   // src/main.ts
-  function InitModule(ctx, logger, nk, initializer) {
+  function InitModule(ctx, logger, nk, _initializer) {
     initLeaderboard(nk, logger);
     logger.info(
       "Tic-Tac-Toe module v%s initialized",
       ctx.env["NAKAMA_MODULE_VERSION"] || "1.0.0"
     );
   }
-  var g = typeof globalThis !== "undefined" ? globalThis : typeof global !== "undefined" ? global : {};
+  var g = globalThis;
   g.InitModule = InitModule;
   g.matchInit = matchInit;
   g.matchJoinAttempt = matchJoinAttempt;

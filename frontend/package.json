@@ -35,6 +35,7 @@
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.2",
     "@testing-library/jest-dom": "^6.4.6",

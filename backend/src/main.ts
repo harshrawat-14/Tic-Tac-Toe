@@ -23,7 +23,7 @@ export function InitModule(
   ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
-  initializer: nkruntime.Initializer,
+  _initializer: nkruntime.Initializer,
 ) {
   // 1. Create leaderboard
   initLeaderboard(nk, logger);
@@ -55,8 +55,9 @@ export function InitModule(
 // Nakama requires all handlers (both InitModule and registered match/RPC handlers)
 // to exist in the global environment so it can map their names.
 
-const g = (typeof globalThis !== 'undefined' ? globalThis : 
-           (typeof global !== 'undefined' ? global : {})) as any;
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const g = globalThis as any;
 
 g.InitModule = InitModule;
 g.matchInit = matchInit;

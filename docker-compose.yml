@@ -5,6 +5,7 @@ services:
   cockroachdb:
     image: cockroachdb/cockroach:latest-v23.1
     container_name: tictactoe-cockroachdb
+    platform: linux/amd64
     command: start-single-node --insecure --store=attrs=ssd,path=/var/lib/cockroach/
     ports:
       - "26257:26257"   # SQL wire protocol
@@ -23,6 +24,7 @@ services:
   nakama:
     image: heroiclabs/nakama:3.21.1
     container_name: tictactoe-nakama
+    platform: linux/amd64
     entrypoint:
       - "/bin/sh"
       - "-ecx"

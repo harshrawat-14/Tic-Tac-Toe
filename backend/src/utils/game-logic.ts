@@ -43,7 +43,7 @@ export function checkWinner(board: ReadonlyArray<string | null>): string | null 
   for (let i = 0; i < WIN_LINES.length; i++) {
     const [a, b, c] = WIN_LINES[i];
     if (board[a] !== null && board[a] === board[b] && board[b] === board[c]) {
-      return board[a] as string;
+      return board[a];
     }
   }
   return null;
@@ -55,7 +55,9 @@ export function checkWinner(board: ReadonlyArray<string | null>): string | null 
  */
 export function isBoardFull(board: ReadonlyArray<string | null>): boolean {
   for (let i = 0; i < board.length; i++) {
-    if (board[i] === null) return false;
+    if (board[i] === null) {
+      return false;
+    }
   }
   return true;
 }

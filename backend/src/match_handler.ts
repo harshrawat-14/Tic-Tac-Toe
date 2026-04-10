@@ -2,8 +2,8 @@
 // Implements all 7 lifecycle functions for a Tic-Tac-Toe authoritative match.
 // `nkruntime` is a global namespace — never imported.
 
-import {
-  OpCode,
+import { OpCode } from './types';
+import type {
   MatchState,
   PlayerState,
   GameMode,
@@ -21,8 +21,8 @@ import {
   getOrCreatePlayerStats,
   writePlayerStats,
   calculateEloChange,
-  PlayerStats,
 } from './leaderboard';
+import type { PlayerStats } from './leaderboard';
 
 import {
   checkWinner,
@@ -426,12 +426,10 @@ const matchJoin: nkruntime.MatchJoinFunction = function matchJoin(
       s.playerOrder.length,
     );
 
-    // Broadcast PLAYER_JOINED to everyone (including self)
-    broadcastMessage(dispatcher, OpCode.PLAYER_JOINED, {
-      userId: userId,
-      displayName: playerState.displayName,
-      symbol: symbol,
-    });
+    // Broadcast current full game state to EVERYONE whenever a new player joins.
+    // This ensures the Host's frontend correctly receives the match state and transitions the UI.
+    const gameState: GameStatePayload = { state: s };
+    broadcastMessage(dispatcher, OpCode.GAME_STATE, gameState);
   }
 
   // ── If two players present, proceed with start conditions ──
@@ -439,9 +437,13 @@ const matchJoin: nkruntime.MatchJoinFunction = function matchJoin(
     let isPrivate = false;
     if (_ctx.matchLabel) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const labelData = JSON.parse(_ctx.matchLabel);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         isPrivate = labelData.type === 'private';
-      } catch (e) {}
+      } catch (e) {
+        logger.error('matchJoinLabel: failed to parse match label: %s', e);
+      }
     }
 
     if (isPrivate) {
@@ -481,7 +483,9 @@ const matchLeave: nkruntime.MatchLeaveFunction = function matchLeave(
     const presence = presences[i];
     const userId = presence.userId;
 
-    if (!s.players[userId]) continue;
+    if (!s.players[userId]) {
+      continue;
+    }
 
     s.players[userId].connected = false;
 
@@ -495,7 +499,9 @@ const matchLeave: nkruntime.MatchLeaveFunction = function matchLeave(
     if (s.status === 'WAITING') {
       delete s.players[userId];
       const idx = s.playerOrder.indexOf(userId);
-      if (idx !== -1) s.playerOrder.splice(idx, 1);
+      if (idx !== -1) {
+        s.playerOrder.splice(idx, 1);
+      }
       delete s.turnForfeits[userId];
       logger.info('matchLeave: user=%s left during WAITING, removed from match', userId);
       continue;
@@ -558,7 +564,7 @@ const matchLoop: nkruntime.MatchLoopFunction = function matchLoop(
       const senderId = message.sender.userId;
 
       switch (message.opCode) {
-        case OpCode.START_GAME: {
+        case (OpCode.START_GAME as number): {
           if (senderId !== s.playerOrder[0]) {
             logger.warn('matchLoop: START_GAME rejected, %s is not host', senderId);
             break;
@@ -574,7 +580,9 @@ const matchLoop: nkruntime.MatchLoopFunction = function matchLoop(
 
           s.status = 'PLAYER_X_TURN';
           s.currentTurn = s.playerOrder[0];
-          if (s.mode === 'timed') s.turnTimeLeft = TURN_TIME_SECONDS;
+          if (s.mode === 'timed') {
+            s.turnTimeLeft = TURN_TIME_SECONDS;
+          }
 
           logger.info('matchLoop: host started match=%s', s.matchId);
           const gameState: GameStatePayload = { state: s };
@@ -582,9 +590,10 @@ const matchLoop: nkruntime.MatchLoopFunction = function matchLoop(
           break;
         }
 
-        case OpCode.MOVE: {
+        case (OpCode.MOVE as number): {
           let movePayload: MovePayload;
           try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             movePayload = JSON.parse(nk.binaryToString(message.data));
           } catch (_e) {
             logger.warn('matchLoop: invalid MOVE payload from user=%s', senderId);
@@ -594,7 +603,7 @@ const matchLoop: nkruntime.MatchLoopFunction = function matchLoop(
           break;
         }
 
-        case OpCode.FORFEIT: {
+        case (OpCode.FORFEIT as number): {
           // Voluntary forfeit
           if (s.playerOrder.length === MAX_PLAYERS) {
             const winnerId = s.playerOrder[0] === senderId
