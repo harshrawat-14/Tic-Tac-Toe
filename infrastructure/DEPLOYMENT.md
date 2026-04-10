@@ -45,6 +45,27 @@ Required backend secrets are auto-generated in the blueprint:
 - Keep frontend and backend in the same region when possible.
 - If you rotate `NAKAMA_SERVER_KEY` in Render, also update Vercel env and redeploy frontend.
 
+### 5) Environment variable source map (manual setup)
+
+If you deploy via **manual Web Service** instead of Blueprint, use this table.
+
+| Variable | Set In | Where to get it |
+|---|---|---|
+| `DB_HOST` | Render backend service env | Render PostgreSQL → **Connections** → Host |
+| `DB_PORT` | Render backend service env | Render PostgreSQL → **Connections** → Port (usually `5432`) |
+| `DB_USER` | Render backend service env | Render PostgreSQL → **Connections** → Username |
+| `DB_PASSWORD` | Render backend service env | Render PostgreSQL → **Connections** → Password |
+| `DB_NAME` | Render backend service env | Render PostgreSQL → **Connections** → Database name |
+| `NAKAMA_SERVER_KEY` | Render backend service env | Generate random string in Render (Generate button) |
+| `NAKAMA_SESSION_ENCRYPTION_KEY` | Render backend service env | Generate random string in Render (Generate button) |
+| `NAKAMA_SESSION_REFRESH_ENCRYPTION_KEY` | Render backend service env | Generate random string in Render (Generate button) |
+| `NAKAMA_RUNTIME_HTTP_KEY` | Render backend service env | Generate random string in Render (Generate button) |
+| `VITE_NAKAMA_URL` | Vercel project env | Public URL of Render backend service (e.g. `https://ttt-nakama.onrender.com`) |
+| `VITE_NAKAMA_SERVER_KEY` | Vercel project env | Must be exactly the same value as `NAKAMA_SERVER_KEY` |
+
+Reference file for backend env names: [backend/.env.render.example](../backend/.env.render.example)
+Reference file for frontend env names: [frontend/.env.production.example](../frontend/.env.production.example)
+
 ## Cost Estimate (us-east-1, monthly)
 
 | Service | Config | ~Cost/mo |
