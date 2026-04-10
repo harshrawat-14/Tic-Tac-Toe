@@ -74,17 +74,17 @@ If Render logs show:
 
 Then your JS entrypoint was configured as `data/modules/index.js` somewhere. Nakama already prefixes `/nakama/data/modules/`, so this doubles the path.
 
-Correct value (hardened in this repo):
+Correct value:
 
-`/nakama/data/modules/index.js`
+`index.js`
 
 Checks:
 
 1. In Render service environment variables, remove `NAKAMA_RUNTIME_JS_ENTRYPOINT` if present.
   - Important: Blueprint updates may not delete previously created env vars in an existing service.
   - Open the service dashboard and remove it manually.
-2. Ensure [backend/nakama-config.yml](../backend/nakama-config.yml) has `runtime.js_entrypoint: "/nakama/data/modules/index.js"`.
-3. Ensure [backend/start-render.sh](../backend/start-render.sh) includes `--runtime.js_entrypoint "/nakama/data/modules/index.js"` (this repo now enforces it and unsets stale env override).
+2. Ensure [backend/nakama-config.yml](../backend/nakama-config.yml) has `runtime.js_entrypoint: "index.js"`.
+3. Ensure [backend/start-render.sh](../backend/start-render.sh) exports `NAKAMA_RUNTIME_JS_ENTRYPOINT=index.js` (this repo now enforces it).
 4. Ensure image copies the file to `/nakama/data/modules/index.js` (see [backend/Dockerfile.render](../backend/Dockerfile.render)).
 
 ## Cost Estimate (us-east-1, monthly)
