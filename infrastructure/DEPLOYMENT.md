@@ -66,6 +66,25 @@ If you deploy via **manual Web Service** instead of Blueprint, use this table.
 Reference file for backend env names: [backend/.env.render.example](../backend/.env.render.example)
 Reference file for frontend env names: [frontend/.env.production.example](../frontend/.env.production.example)
 
+### 6) Troubleshooting: duplicated JS entrypoint path
+
+If Render logs show:
+
+`JavaScript entrypoint must be a valid path ... /nakama/data/modules/data/modules/index.js`
+
+Then your JS entrypoint was configured as `data/modules/index.js` somewhere. Nakama already prefixes `/nakama/data/modules/`, so this doubles the path.
+
+Correct value is only:
+
+`index.js`
+
+Checks:
+
+1. In Render service environment variables, remove `NAKAMA_RUNTIME_JS_ENTRYPOINT` if present.
+2. Ensure [backend/nakama-config.yml](../backend/nakama-config.yml) has `runtime.js_entrypoint: "index.js"`.
+3. Ensure [backend/start-render.sh](../backend/start-render.sh) includes `--runtime.js_entrypoint "index.js"` (this repo now enforces it).
+4. Ensure image copies the file to `/nakama/data/modules/index.js` (see [backend/Dockerfile.render](../backend/Dockerfile.render)).
+
 ## Cost Estimate (us-east-1, monthly)
 
 | Service | Config | ~Cost/mo |
