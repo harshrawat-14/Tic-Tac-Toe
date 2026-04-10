@@ -11,6 +11,7 @@ services:
     plan: free
     rootDir: backend
     dockerfilePath: ./Dockerfile.render
+    dockerCommand: /nakama/start-render.sh
     envVars:
       - key: DB_HOST
         fromDatabase:
