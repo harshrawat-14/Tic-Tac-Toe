@@ -101,6 +101,7 @@ export interface CreateRoomRequest {
 
 export interface CreateRoomResponse {
   matchId: string;
+  secret: string;
 }
 
 export interface LeaderboardEntry {

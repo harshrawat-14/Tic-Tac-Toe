@@ -24,9 +24,9 @@ import {
  * Client calls: `nakamaClient.rpc(session, 'create_room', payload)`
  *
  * Request:  { mode: 'classic' | 'timed' }
- * Response: { matchId: string }
+ * Response: { matchId: string, secret: string }
  */
-export const rpcCreateRoom: nkruntime.RpcFunction = function (
+export function rpcCreateRoom(
   ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -46,16 +46,18 @@ export const rpcCreateRoom: nkruntime.RpcFunction = function (
   }
 
   const matchId = nk.matchCreate('tictactoe', { mode: mode, type: 'private' });
+  const secret = matchId;
   logger.info(
-    'create_room: user=%s created match=%s mode=%s',
+    'create_room: user=%s created match=%s mode=%s secret=%s',
     ctx.userId,
     matchId,
     mode,
+    secret,
   );
 
-  const response: CreateRoomResponse = { matchId };
+  const response: CreateRoomResponse = { matchId, secret };
   return JSON.stringify(response);
-};
+}
 
 // ─── get_leaderboard ─────────────────────────────────────────────────────────
 
@@ -65,7 +67,7 @@ export const rpcCreateRoom: nkruntime.RpcFunction = function (
  * Request:  { limit: number, cursor?: string }
  * Response: { entries: LeaderboardEntry[], nextCursor?: string }
  */
-export const rpcGetLeaderboard: nkruntime.RpcFunction = function (
+export function rpcGetLeaderboard(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -127,7 +129,7 @@ export const rpcGetLeaderboard: nkruntime.RpcFunction = function (
   };
 
   return JSON.stringify(response);
-};
+}
 
 // ─── get_player_stats ────────────────────────────────────────────────────────
 
@@ -137,7 +139,7 @@ export const rpcGetLeaderboard: nkruntime.RpcFunction = function (
  * Request:  { userId?: string }   — omit to get own stats
  * Response: PlayerStatsResponse
  */
-export const rpcGetPlayerStats: nkruntime.RpcFunction = function (
+export function rpcGetPlayerStats(
   ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -193,7 +195,7 @@ export const rpcGetPlayerStats: nkruntime.RpcFunction = function (
   };
 
   return JSON.stringify(response);
-};
+}
 
 // ─── get_active_matches ──────────────────────────────────────────────────────
 
@@ -209,7 +211,7 @@ interface ActiveMatchInfo {
  * Request:  (none)
  * Response: ActiveMatchInfo[]
  */
-export const rpcGetActiveMatches: nkruntime.RpcFunction = function (
+export function rpcGetActiveMatches(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -239,4 +241,4 @@ export const rpcGetActiveMatches: nkruntime.RpcFunction = function (
 
   logger.debug('get_active_matches: found %d matches', result.length);
   return JSON.stringify(result);
-};
+}

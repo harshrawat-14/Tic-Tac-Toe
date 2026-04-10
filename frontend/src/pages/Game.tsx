@@ -15,8 +15,10 @@ export default function Game() {
   const navigate = useNavigate();
   const matchState = useGameStore((s) => s.matchState);
   const matchId = useGameStore((s) => s.matchId);
+  const privateRoomCode = useGameStore((s) => s.privateRoomCode);
   const myUserId = useGameStore((s) => s.myUserId);
   const isMyTurn = useGameStore((s) => s.isMyTurn);
+  const socket = useGameStore((s) => s.socket);
   const leaveMatch = useGameStore((s) => s.leaveMatch);
   const sendForfeit = useGameStore((s) => s.sendForfeit);
 
@@ -86,8 +88,8 @@ export default function Game() {
                   <button 
                     id="start-match-button"
                     onClick={() => {
-                       const { socket } = useGameStore.getState();
-                       socket?.sendMatchState(matchId!, OpCode.START_GAME, '{}');
+                      if (!socket || !matchId) return;
+                      socket.sendMatchState(matchId, OpCode.START_GAME, '{}');
                     }}
                     className="btn-brand w-full py-3 text-lg font-bold shadow-lg shadow-brand-500/20"
                   >
@@ -98,7 +100,7 @@ export default function Game() {
                 <div className="space-y-4">
                   <p className="text-sm text-game-bg-muted">Share this code with your opponent:</p>
                   <div className="bg-game-bg-surface/50 p-4 rounded-xl font-mono text-2xl tracking-widest border border-game-bg-border/30 select-all cursor-copy text-brand-400 group relative">
-                    {matchId}
+                    {privateRoomCode || matchId}
                     <div className="absolute inset-0 bg-brand-400/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
                   </div>
                   <div className="flex items-center justify-center gap-2 pt-2">

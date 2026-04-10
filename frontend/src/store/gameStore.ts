@@ -33,6 +33,7 @@ export interface GameStoreState {
 
   // Matchmaking
   matchmakingTicket: string | null;
+  privateRoomCode: string | null;
 
   // Game
   matchId: string | null;
@@ -51,7 +52,8 @@ export interface GameStoreState {
   restoreAndConnect: () => Promise<boolean>;
   joinMatchmaking: (mode: GameMode) => Promise<void>;
   cancelMatchmaking: () => Promise<void>;
-  joinMatch: (matchId: string) => Promise<void>;
+  joinMatch: (matchId: string, options?: { privateRoomCode?: string | null }) => Promise<void>;
+  setPrivateRoomCode: (code: string | null) => void;
   makeMove: (cellIndex: number) => void;
   sendForfeit: () => void;
   leaveMatch: () => void;
@@ -83,6 +85,7 @@ const INITIAL_GAME_STATE = {
   reconnectSecondsLeft: 0,
   opponentReconnecting: false,
   matchmakingTicket: null as string | null,
+  privateRoomCode: null as string | null,
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -91,7 +94,24 @@ export const useGameStore = create<GameStoreState>((set, get) => {
 
   // ── Socket event callbacks ────────────────────────────────────────────────
 
-    function handleMatchData(rawMatchData: unknown): void {
+  async function handleMatchmakerMatched(rawMatched: unknown): Promise<void> {
+    const matched = rawMatched as { match_id?: string; matchId?: string };
+    const matchId = matched.match_id || matched.matchId;
+
+    if (!matchId) {
+      console.warn('[GameStore] Matchmaker matched event missing matchId:', matched);
+      return;
+    }
+
+    try {
+      await get().joinMatch(matchId);
+    } catch (error) {
+      console.error('[GameStore] Failed to join match from matchmaker event:', error);
+      set({ connectionError: 'Matched, but failed to join game. Please retry.' });
+    }
+  }
+
+  function handleMatchData(rawMatchData: unknown): void {
     const matchData = rawMatchData as MatchData;
     const opCode = matchData.op_code; 
     const dataStr = matchData.data
@@ -284,13 +304,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
 
         socket.onmatchmakermatched = (matched: unknown) => {
-          const m = matched as { match_id?: string; matchId?: string };
-          console.log('[GameStore] Matchmaker matched:', m);
-          const mId = m.match_id || m.matchId;
-          if (mId) {
-            set({ matchmakingTicket: null });
-            get().joinMatch(mId);
-          }
+          void handleMatchmakerMatched(matched);
         };
 
         socket.onmatchdata = (matchData) => {
@@ -338,13 +352,7 @@ export const useGameStore = create<GameStoreState>((set, get) => {
         const socket = nakamaClient.createSocket(NAKAMA_SSL, false);
 
         socket.onmatchmakermatched = (matched: unknown) => {
-          const m = matched as { match_id?: string; matchId?: string };
-          console.log('[GameStore] Matchmaker matched:', m);
-          const mId = m.match_id || m.matchId;
-          if (mId) {
-            set({ matchmakingTicket: null });
-            get().joinMatch(mId);
-          }
+          void handleMatchmakerMatched(matched);
         };
 
         socket.onmatchdata = (matchData) => {
@@ -392,27 +400,42 @@ export const useGameStore = create<GameStoreState>((set, get) => {
 
     async cancelMatchmaking(): Promise<void> {
       const { socket, matchmakingTicket } = get();
-      set({ matchmakingTicket: null });
-      if (!socket || !matchmakingTicket) {
-        console.warn('cancelMatchmaking called but no ticket or socket available');
+      if (!matchmakingTicket) {
+        console.warn('[GameStore] cancelMatchmaking called with null ticket');
+        set({ matchmakingTicket: null });
+        return;
+      }
+      if (!socket) {
+        console.warn('[GameStore] cancelMatchmaking called without active socket');
+        set({ matchmakingTicket: null });
         return;
       }
 
       try {
         await socket.removeMatchmaker(matchmakingTicket);
       } catch (err) {
-        console.warn('Failed to remove matchmaking ticket', err);
+        console.warn('[GameStore] Failed to remove matchmaking ticket', err);
+      } finally {
+        set({ matchmakingTicket: null });
       }
     },
 
     // ── joinMatch ─────────────────────────────────────────────────────────
 
-    async joinMatch(matchId: string): Promise<void> {
+    async joinMatch(matchId: string, options?: { privateRoomCode?: string | null }): Promise<void> {
       const { socket } = get();
       if (!socket) throw new Error('Not connected');
 
       await socket.joinMatch(matchId);
-      set({ ...INITIAL_GAME_STATE, matchId });
+      set({
+        ...INITIAL_GAME_STATE,
+        matchId,
+        privateRoomCode: options?.privateRoomCode ?? null,
+      });
+    },
+
+    setPrivateRoomCode(code: string | null): void {
+      set({ privateRoomCode: code });
     },
 
     // ── makeMove ──────────────────────────────────────────────────────────

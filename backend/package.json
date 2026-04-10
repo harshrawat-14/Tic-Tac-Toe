@@ -2,8 +2,8 @@
   "name": "tictactoe-nakama-backend",
   "version": "1.0.0",
   "scripts": {
-    "build": "npx esbuild src/main.ts --bundle --format=iife --outfile=build/index.js",
-    "watch": "npx esbuild src/main.ts --bundle --format=iife --outfile=build/index.js --watch",
+    "build": "node build.js",
+    "watch": "npx esbuild src/main.ts --bundle --format=iife --global-name=__nakamaExports --outfile=build/index.js --watch",
     "lint": "eslint src --ext .ts --max-warnings 0",
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",

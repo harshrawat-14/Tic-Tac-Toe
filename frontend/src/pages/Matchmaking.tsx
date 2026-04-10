@@ -14,10 +14,10 @@ export default function Matchmaking() {
 
   // Redirect to lobby if no ticket
   useEffect(() => {
-    if (!matchmakingTicket) {
+    if (!matchmakingTicket && !matchId) {
       navigate('/lobby', { replace: true });
     }
-  }, [matchmakingTicket, navigate]);
+  }, [matchmakingTicket, matchId, navigate]);
 
   // Redirect to game when matched
   useEffect(() => {

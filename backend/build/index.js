@@ -1,5 +1,5 @@
 "use strict";
-(() => {
+var __nakamaExports = (() => {
   // src/utils/game-logic.ts
   var WIN_LINES = [
     [0, 1, 2],
@@ -287,7 +287,7 @@
     broadcastMessage(dispatcher, 3 /* MOVE_RESULT */, moveResult);
     return state;
   }
-  var matchInit = function matchInit2(ctx, logger, _nk, params) {
+  function matchInit(ctx, logger, _nk, params) {
     let mode = "classic";
     if (params && params["mode"] === "timed") {
       mode = "timed";
@@ -318,8 +318,8 @@
       tickRate: 1,
       label
     };
-  };
-  var matchJoinAttempt = function matchJoinAttempt2(_ctx, logger, _nk, _dispatcher, _tick, state, presence, _metadata) {
+  }
+  function matchJoinAttempt(_ctx, logger, _nk, _dispatcher, _tick, state, presence, _metadata) {
     const s = state;
     if (s.players[presence.userId]) {
       logger.info("matchJoinAttempt: user=%s reconnecting", presence.userId);
@@ -334,8 +334,8 @@
       return { state, accept: false, rejectMessage: "Match is full" };
     }
     return { state, accept: true };
-  };
-  var matchJoin = function matchJoin2(_ctx, logger, nk, dispatcher, _tick, state, presences) {
+  }
+  function matchJoin(_ctx, logger, nk, dispatcher, _tick, state, presences) {
     const s = state;
     for (let i = 0; i < presences.length; i++) {
       const presence = presences[i];
@@ -400,8 +400,8 @@
       }
     }
     return { state: s };
-  };
-  var matchLeave = function matchLeave2(_ctx, logger, _nk, dispatcher, _tick, state, presences) {
+  }
+  function matchLeave(_ctx, logger, _nk, dispatcher, _tick, state, presences) {
     const s = state;
     for (let i = 0; i < presences.length; i++) {
       const presence = presences[i];
@@ -442,8 +442,8 @@
       return null;
     }
     return { state: s };
-  };
-  var matchLoop = function matchLoop2(_ctx, logger, nk, dispatcher, _tick, state, messages) {
+  }
+  function matchLoop(_ctx, logger, nk, dispatcher, _tick, state, messages) {
     let s = state;
     if (s.status === "GAME_OVER") {
       if (connectedPlayerCount(s) === 0) {
@@ -578,8 +578,8 @@
       }
     }
     return { state: s };
-  };
-  var matchSignal = function matchSignal2(_ctx, logger, _nk, _dispatcher, _tick, state, data) {
+  }
+  function matchSignal(_ctx, logger, _nk, _dispatcher, _tick, state, data) {
     const s = state;
     if (data === "end_match") {
       s.status = "GAME_OVER";
@@ -588,8 +588,8 @@
     }
     logger.info("matchSignal: match=%s received signal: %s", s.matchId, data);
     return { state: s, data: "ok" };
-  };
-  var matchTerminate = function matchTerminate2(_ctx, logger, _nk, dispatcher, _tick, state, graceSeconds) {
+  }
+  function matchTerminate(_ctx, logger, _nk, dispatcher, _tick, state, graceSeconds) {
     const s = state;
     logger.info(
       "matchTerminate: match=%s terminating (grace=%ds)",
@@ -607,10 +607,10 @@
       broadcastMessage(dispatcher, 4 /* GAME_OVER */, terminatePayload);
     }
     return { state: s };
-  };
+  }
 
   // src/rpc_handlers.ts
-  var rpcCreateRoom = function(ctx, logger, nk, payload) {
+  function rpcCreateRoom(ctx, logger, nk, payload) {
     let mode = "classic";
     if (payload && payload.length > 0) {
       try {
@@ -623,16 +623,18 @@
       }
     }
     const matchId = nk.matchCreate("tictactoe", { mode, type: "private" });
+    const secret = matchId;
     logger.info(
-      "create_room: user=%s created match=%s mode=%s",
+      "create_room: user=%s created match=%s mode=%s secret=%s",
       ctx.userId,
       matchId,
-      mode
+      mode,
+      secret
     );
-    const response = { matchId };
+    const response = { matchId, secret };
     return JSON.stringify(response);
-  };
-  var rpcGetLeaderboard = function(_ctx, logger, nk, payload) {
+  }
+  function rpcGetLeaderboard(_ctx, logger, nk, payload) {
     let limit = 10;
     let cursor;
     if (payload && payload.length > 0) {
@@ -684,8 +686,8 @@
       nextCursor: result && result.nextCursor ? result.nextCursor : void 0
     };
     return JSON.stringify(response);
-  };
-  var rpcGetPlayerStats = function(ctx, logger, nk, payload) {
+  }
+  function rpcGetPlayerStats(ctx, logger, nk, payload) {
     let targetUserId = ctx.userId;
     if (payload && payload.length > 0) {
       try {
@@ -729,8 +731,8 @@
       totalGames: stats.totalGames
     };
     return JSON.stringify(response);
-  };
-  var rpcGetActiveMatches = function(_ctx, logger, nk, _payload) {
+  }
+  function rpcGetActiveMatches(_ctx, logger, nk, _payload) {
     const matches = nk.matchList(
       10,
       // limit
@@ -758,18 +760,67 @@
     }
     logger.debug("get_active_matches: found %d matches", result.length);
     return JSON.stringify(result);
-  };
+  }
 
   // src/main.ts
-  function InitModule(ctx, logger, nk, _initializer) {
+  function matchmakerMatched(_ctx, logger, nk, matches) {
+    var _a, _b;
+    if (!matches || matches.length < 2) {
+      return;
+    }
+    const mode = ((_b = (_a = matches[0]) == null ? void 0 : _a.properties) == null ? void 0 : _b.mode) === "timed" ? "timed" : "classic";
+    const matchId = nk.matchCreate("tictactoe", { mode, type: "matchmaker" });
+    logger.info("matchmakerMatched: created match=%s mode=%s players=%d", matchId, mode, matches.length);
+    return matchId;
+  }
+  function probeMatchInit(_ctx, _logger, _nk, _params) {
+    return {
+      state: {},
+      tickRate: 1,
+      label: "probe"
+    };
+  }
+  function probeMatchJoinAttempt(_ctx, _logger, _nk, _dispatcher, _tick, state, _presence, _metadata) {
+    return { state, accept: true };
+  }
+  function probeMatchJoin(_ctx, _logger, _nk, _dispatcher, _tick, state, _presences) {
+    return { state };
+  }
+  function probeMatchLeave(_ctx, _logger, _nk, _dispatcher, _tick, state, _presences) {
+    return { state };
+  }
+  function probeMatchLoop(_ctx, _logger, _nk, _dispatcher, _tick, state, _messages) {
+    return { state };
+  }
+  function probeMatchSignal(_ctx, _logger, _nk, _dispatcher, _tick, state, data) {
+    return { state, data };
+  }
+  function probeMatchTerminate(_ctx, _logger, _nk, _dispatcher, _tick, state, _graceSeconds) {
+    return { state };
+  }
+  function InternalInitModule(ctx, logger, nk, initializer) {
     initLeaderboard(nk, logger);
+    initializer.registerMatch("probe", {
+      matchInit: probeMatchInit,
+      matchJoinAttempt: probeMatchJoinAttempt,
+      matchJoin: probeMatchJoin,
+      matchLeave: probeMatchLeave,
+      matchLoop: probeMatchLoop,
+      matchSignal: probeMatchSignal,
+      matchTerminate: probeMatchTerminate
+    });
+    initializer.registerMatchmakerMatched(matchmakerMatched);
+    initializer.registerRpc("create_room", rpcCreateRoom);
+    initializer.registerRpc("get_leaderboard", rpcGetLeaderboard);
+    initializer.registerRpc("get_player_stats", rpcGetPlayerStats);
+    initializer.registerRpc("get_active_matches", rpcGetActiveMatches);
     logger.info(
       "Tic-Tac-Toe module v%s initialized",
       ctx.env["NAKAMA_MODULE_VERSION"] || "1.0.0"
     );
   }
   var g = globalThis;
-  g.InitModule = InitModule;
+  g.InternalInitModule = InternalInitModule;
   g.matchInit = matchInit;
   g.matchJoinAttempt = matchJoinAttempt;
   g.matchJoin = matchJoin;
@@ -777,8 +828,93 @@
   g.matchLoop = matchLoop;
   g.matchSignal = matchSignal;
   g.matchTerminate = matchTerminate;
+  g.matchmakerMatched = matchmakerMatched;
+  g.initLeaderboard = initLeaderboard;
+  g.probeMatchInit = probeMatchInit;
+  g.probeMatchJoinAttempt = probeMatchJoinAttempt;
+  g.probeMatchJoin = probeMatchJoin;
+  g.probeMatchLeave = probeMatchLeave;
+  g.probeMatchLoop = probeMatchLoop;
+  g.probeMatchSignal = probeMatchSignal;
+  g.probeMatchTerminate = probeMatchTerminate;
   g.rpcCreateRoom = rpcCreateRoom;
   g.rpcGetLeaderboard = rpcGetLeaderboard;
   g.rpcGetPlayerStats = rpcGetPlayerStats;
   g.rpcGetActiveMatches = rpcGetActiveMatches;
 })();
+
+
+function tttMatchInit(ctx, logger, nk, params) {
+  return globalThis.matchInit(ctx, logger, nk, params);
+}
+
+function tttMatchJoinAttempt(ctx, logger, nk, dispatcher, tick, state, presence, metadata) {
+  return globalThis.matchJoinAttempt(ctx, logger, nk, dispatcher, tick, state, presence, metadata);
+}
+
+function tttMatchJoin(ctx, logger, nk, dispatcher, tick, state, presences) {
+  return globalThis.matchJoin(ctx, logger, nk, dispatcher, tick, state, presences);
+}
+
+function tttMatchLeave(ctx, logger, nk, dispatcher, tick, state, presences) {
+  return globalThis.matchLeave(ctx, logger, nk, dispatcher, tick, state, presences);
+}
+
+function tttMatchLoop(ctx, logger, nk, dispatcher, tick, state, messages) {
+  return globalThis.matchLoop(ctx, logger, nk, dispatcher, tick, state, messages);
+}
+
+function tttMatchSignal(ctx, logger, nk, dispatcher, tick, state, data) {
+  return globalThis.matchSignal(ctx, logger, nk, dispatcher, tick, state, data);
+}
+
+function tttMatchTerminate(ctx, logger, nk, dispatcher, tick, state, graceSeconds) {
+  return globalThis.matchTerminate(ctx, logger, nk, dispatcher, tick, state, graceSeconds);
+}
+
+function tttMatchmakerMatched(ctx, logger, nk, matches) {
+  return globalThis.matchmakerMatched(ctx, logger, nk, matches);
+}
+
+function tttRpcCreateRoom(ctx, logger, nk, payload) {
+  return globalThis.rpcCreateRoom(ctx, logger, nk, payload);
+}
+
+function tttRpcGetLeaderboard(ctx, logger, nk, payload) {
+  return globalThis.rpcGetLeaderboard(ctx, logger, nk, payload);
+}
+
+function tttRpcGetPlayerStats(ctx, logger, nk, payload) {
+  return globalThis.rpcGetPlayerStats(ctx, logger, nk, payload);
+}
+
+function tttRpcGetActiveMatches(ctx, logger, nk, payload) {
+  return globalThis.rpcGetActiveMatches(ctx, logger, nk, payload);
+}
+
+function InitModule(ctx, logger, nk, initializer) {
+  if (typeof globalThis.initLeaderboard === 'function') {
+    globalThis.initLeaderboard(nk, logger);
+  }
+
+  initializer.registerMatch('tictactoe', {
+    matchInit: tttMatchInit,
+    matchJoinAttempt: tttMatchJoinAttempt,
+    matchJoin: tttMatchJoin,
+    matchLeave: tttMatchLeave,
+    matchLoop: tttMatchLoop,
+    matchSignal: tttMatchSignal,
+    matchTerminate: tttMatchTerminate,
+  });
+
+  initializer.registerMatchmakerMatched(tttMatchmakerMatched);
+
+  initializer.registerRpc('create_room', tttRpcCreateRoom);
+  initializer.registerRpc('get_leaderboard', tttRpcGetLeaderboard);
+  initializer.registerRpc('get_player_stats', tttRpcGetPlayerStats);
+  initializer.registerRpc('get_active_matches', tttRpcGetActiveMatches);
+
+  logger.info('Tic-Tac-Toe module compatibility InitModule initialized');
+}
+
+globalThis.InitModule = InitModule;

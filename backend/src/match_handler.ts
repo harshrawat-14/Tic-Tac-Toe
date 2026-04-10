@@ -290,7 +290,7 @@ function handleMove(
 
 // ─── matchInit ───────────────────────────────────────────────────────────────
 
-const matchInit: nkruntime.MatchInitFunction = function matchInit(
+export function matchInit(
   ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -330,11 +330,11 @@ const matchInit: nkruntime.MatchInitFunction = function matchInit(
     tickRate: 1,
     label: label,
   };
-};
+}
 
 // ─── matchJoinAttempt ────────────────────────────────────────────────────────
 
-const matchJoinAttempt: nkruntime.MatchJoinAttemptFunction = function matchJoinAttempt(
+export function matchJoinAttempt(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -365,11 +365,11 @@ const matchJoinAttempt: nkruntime.MatchJoinAttemptFunction = function matchJoinA
   }
 
   return { state, accept: true };
-};
+}
 
 // ─── matchJoin ───────────────────────────────────────────────────────────────
 
-const matchJoin: nkruntime.MatchJoinFunction = function matchJoin(
+export function matchJoin(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -464,11 +464,11 @@ const matchJoin: nkruntime.MatchJoinFunction = function matchJoin(
   }
 
   return { state: s as unknown as nkruntime.MatchState };
-};
+}
 
 // ─── matchLeave ──────────────────────────────────────────────────────────────
 
-const matchLeave: nkruntime.MatchLeaveFunction = function matchLeave(
+export function matchLeave(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -532,11 +532,11 @@ const matchLeave: nkruntime.MatchLeaveFunction = function matchLeave(
   }
 
   return { state: s as unknown as nkruntime.MatchState };
-};
+}
 
 // ─── matchLoop ───────────────────────────────────────────────────────────────
 
-const matchLoop: nkruntime.MatchLoopFunction = function matchLoop(
+export function matchLoop(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   nk: nkruntime.Nakama,
@@ -731,11 +731,11 @@ const matchLoop: nkruntime.MatchLoopFunction = function matchLoop(
   }
 
   return { state: s as unknown as nkruntime.MatchState };
-};
+}
 
 // ─── matchSignal ─────────────────────────────────────────────────────────────
 
-const matchSignal: nkruntime.MatchSignalFunction = function matchSignal(
+export function matchSignal(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -754,11 +754,11 @@ const matchSignal: nkruntime.MatchSignalFunction = function matchSignal(
 
   logger.info('matchSignal: match=%s received signal: %s', s.matchId, data);
   return { state: s as unknown as nkruntime.MatchState, data: 'ok' };
-};
+}
 
 // ─── matchTerminate ──────────────────────────────────────────────────────────
 
-const matchTerminate: nkruntime.MatchTerminateFunction = function matchTerminate(
+export function matchTerminate(
   _ctx: nkruntime.Context,
   logger: nkruntime.Logger,
   _nk: nkruntime.Nakama,
@@ -788,16 +788,4 @@ const matchTerminate: nkruntime.MatchTerminateFunction = function matchTerminate
   }
 
   return { state: s as unknown as nkruntime.MatchState };
-};
-
-// ─── Exported Match Handler ──────────────────────────────────────────────────
-
-export {
-  matchInit,
-  matchJoinAttempt,
-  matchJoin,
-  matchLeave,
-  matchLoop,
-  matchSignal,
-  matchTerminate,
-};
+}

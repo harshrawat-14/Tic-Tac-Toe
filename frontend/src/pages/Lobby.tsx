@@ -17,6 +17,7 @@ export default function Lobby() {
   const myDisplayName = useGameStore((s) => s.myDisplayName);
   const joinMatchmaking = useGameStore((s) => s.joinMatchmaking);
   const joinMatch = useGameStore((s) => s.joinMatch);
+  const setPrivateRoomCode = useGameStore((s) => s.setPrivateRoomCode);
   const disconnect = useGameStore((s) => s.disconnect);
 
   const [joinCode, setJoinCode] = useState('');
@@ -54,7 +55,10 @@ export default function Lobby() {
       const data = (typeof res.payload === 'string'
         ? JSON.parse(res.payload)
         : res.payload) as CreateRoomResponse;
-      await joinMatch(data.matchId);
+
+      const roomCode = data.secret || data.matchId;
+      setPrivateRoomCode(roomCode);
+      await joinMatch(data.matchId, { privateRoomCode: roomCode });
       navigate('/game');
     } catch (err) {
       console.error('Failed to create room:', err);
