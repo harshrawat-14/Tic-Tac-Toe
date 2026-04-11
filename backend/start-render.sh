@@ -10,6 +10,7 @@ SERVER_KEY="${NAKAMA_SERVER_KEY:-defaultkey}"
 SESSION_ENC_KEY="${NAKAMA_SESSION_ENCRYPTION_KEY:-change-me-session-key}"
 SESSION_REFRESH_KEY="${NAKAMA_SESSION_REFRESH_ENCRYPTION_KEY:-change-me-refresh-key}"
 RUNTIME_HTTP_KEY="${NAKAMA_RUNTIME_HTTP_KEY:-change-me-http-key}"
+DB_ADDRESS="${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
 
 # Defensive: clear any stale Render env override variants first.
 unset NAKAMA_RUNTIME_JS_ENTRYPOINT 2>/dev/null || true
@@ -23,6 +24,9 @@ export NAKAMA_RUNTIME_JS_ENTRYPOINT="index.js"
 
 echo "[start-render] Launching Nakama with runtime.js_entrypoint=index.js"
 
+echo "[start-render] Running database migrations"
+/nakama/nakama migrate up --database.address "${DB_ADDRESS}"
+
 exec /nakama/nakama \
   --config /nakama/data/nakama-config.yml \
   --name nakama1 \
@@ -31,4 +35,4 @@ exec /nakama/nakama \
   --session.encryption_key "${SESSION_ENC_KEY}" \
   --session.refresh_encryption_key "${SESSION_REFRESH_KEY}" \
   --runtime.http_key "${RUNTIME_HTTP_KEY}" \
-  --database.address "${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+  --database.address "${DB_ADDRESS}"

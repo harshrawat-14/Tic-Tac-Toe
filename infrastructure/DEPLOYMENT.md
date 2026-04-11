@@ -44,6 +44,7 @@ Required backend secrets are auto-generated in the blueprint:
 - Render free instances may spin down when idle; first request can be slow.
 - Keep frontend and backend in the same region when possible.
 - If you rotate `NAKAMA_SERVER_KEY` in Render, also update Vercel env and redeploy frontend.
+- This repo runs `nakama migrate up` automatically on backend startup to prevent schema mismatch errors.
 
 ### 5) Environment variable source map (manual setup)
 
