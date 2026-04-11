@@ -15,6 +15,8 @@ FROM heroiclabs/nakama:3.21.1
 
 WORKDIR /nakama/data/modules
 COPY --from=builder /app/build/index.js ./index.js
+RUN mkdir -p /nakama/data/modules/data/modules \
+	&& cp /nakama/data/modules/index.js /nakama/data/modules/data/modules/index.js
 
 COPY nakama-config.yml /nakama/data/nakama-config.yml
 COPY start-render.sh /nakama/start-render.sh
